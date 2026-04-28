@@ -76,7 +76,7 @@ bash {SKILL_DIR}/scripts/init-harness.sh
   - `开发中` → `🔄 开发中`
   - `已完成` → `✅ 已完成`
   - `已挂起` → `⏸️ 已挂起`
-- 迭代边界 → 保留原描述追加到 `BOUNDARIES.md`
+- 迭代边界 → 提炼为一句话摘要后追加到 `BOUNDARIES.md`，不搬运任务流水账；完整细节仍留在对应 SPEC / 原文档中
 - 变更记录 → 追加到 `INDEX.md` 底部 `## 变更记录` 区域
 
 #### 2.3 重写 `AGENTS.md`
