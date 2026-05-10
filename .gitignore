@@ -1,7 +1,7 @@
 # AI tooling directories (vendored skills — not part of this repo)
-.claude/
+.claude
 .codebuddy
-.cursor/
+.cursor
 
 # Node
 node_modules/
