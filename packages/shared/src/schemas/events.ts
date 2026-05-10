@@ -39,15 +39,22 @@ export const EventType = {
   RepoRefreshed: "repo.refreshed",
   RepoRemoved: "repo.removed",
   /**
-   * Astack auto-healed a dirty open-source mirror by resetting it to
-   * `origin/HEAD` (v0.6). Emitted from `SyncService.ensureMirrorClean`
-   * only when an actual reset was performed — no event for clean mirrors.
+   * Astack reset an open-source mirror to `origin/HEAD` (v0.6+).
+   *
+   * Fired from two code paths:
+   *   - `SyncService.ensureMirrorClean` with `reason:"dirty_working_tree"`
+   *     when a background pull/resolve found the mirror dirty (v0.6).
+   *   - `RepoService.refresh` with `reason:"user_forced"` when the user
+   *     explicitly triggered Force pull against a dirty mirror (v0.10).
+   *
+   * No event is fired when the mirror was already clean — the reset
+   * actually happened on the filesystem for every fired event.
    *
    * Payload carries `repo_id`, `repo_name`, `repo_kind` ("open-source"),
-   * and `reason` (currently only "dirty_working_tree"). Reserved for a
-   * future "mirror health" dashboard; not directly consumed by the current
-   * Web UI (the reset is already surfaced via warn log + batch outcome
-   * `error_detail` when reset fails).
+   * and `reason`. Reserved for a future "mirror health" dashboard;
+   * current Web UI surfaces user-forced resets via toast and
+   * auto-heals via warn log + batch outcome `error_detail` when reset
+   * fails.
    */
   RepoMirrorReset: "repo.mirror_reset",
 
@@ -157,16 +164,25 @@ export const RepoRemovedPayloadSchema = z.object({
  *
  * Only `kind=open-source` mirrors are auto-healed; `custom` repos never
  * emit this event because dirty working trees there may be legitimate
- * push-flow intermediate state. The reason enum leaves room for future
+ * push-flow intermediate state. The `reason` enum leaves room for future
  * triggers (e.g. `"detached_head"`) without a schema bump.
+ *
+ * Reasons:
+ *   - `dirty_working_tree` — SyncService's `ensureMirrorClean` auto-heal
+ *     (v0.6). Fired before `pullOne` / `resolve` when the mirror had
+ *     uncommitted changes; user did not explicitly ask for it.
+ *   - `user_forced` — user clicked the Force pull button in the Repos
+ *     UI (v0.10) which sent `POST /api/repos/:id/refresh {force:true}`.
+ *     Only fired when the mirror was actually dirty (force on a clean
+ *     mirror pulls without resetting, no event).
  */
 export const RepoMirrorResetPayloadSchema = z.object({
   repo_id: z.number().int().positive(),
   repo_name: z.string().min(1),
   /** Only open-source mirrors are auto-healed; reserved as literal. */
   repo_kind: z.literal("open-source"),
-  /** Future-proof enum; today only `dirty_working_tree` fires. */
-  reason: z.enum(["dirty_working_tree"])
+  /** Future-proof enum; today `dirty_working_tree` and `user_forced` fire. */
+  reason: z.enum(["dirty_working_tree", "user_forced"])
 });
 
 export const ProjectRegisteredPayloadSchema = z.object({

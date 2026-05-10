@@ -90,7 +90,7 @@
    ```
 4. BigInt 行为（`readBigInts` 等）、`Uint8Array` 对应 BLOB 的处理行为符合预期
 
-**产出**：`docs/version/v0.2-spike-report.md` 记录 spike 跑过/未过，并列出任何意料外的行为。
+**产出**：`docs/version/Iteration1_SqliteAndMultiRepo_SPIKE.md` 记录 spike 跑过/未过，并列出任何意料外的行为。
 
 **回滚条件**：spike 未通过 → 回滚 OV-T3 决策（保留 better-sqlite3，升级到 v12.x + 定位 Node 25 prebuild 问题）。
 
@@ -530,7 +530,7 @@ export const BUILTIN_SEEDS: readonly SeedDefinition[] = [
 每个 PR 的 merge 条件包含对应文档：
 
 - **PR1**：`docs/asset/design.md § Eng Review 9`（scanner 契约）；`README.md` skill 类型说明加 `agent`
-- **PR2**：`docs/asset/design.md § 数据模型`；本文档 `docs/version/v0.2-sqlite-and-multi-repo.md` 的 schema 部分更新为实际 DDL
+- **PR2**：`docs/asset/design.md § 数据模型`；本文档 `docs/version/Iteration1_SqliteAndMultiRepo.md` 的 schema 部分更新为实际 DDL
 - **PR3**：`README.md` 和 `AGENTS.md` 的 Node 版本要求；CHANGELOG（如有）
 - **PR4**：`README.md` 介绍 SeedService 行为和可禁用方式（未来）；`design.md § 开源仓库 seeding` 新章节
 

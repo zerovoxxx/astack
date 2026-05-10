@@ -78,12 +78,58 @@ export type DeleteRepoResponse = z.infer<typeof DeleteRepoResponseSchema>;
 
 // ---------- POST /api/repos/:id/refresh ----------
 
+/**
+ * Body for `POST /api/repos/:id/refresh` (v0.10+).
+ *
+ * `force=true` means "reset the open-source mirror to `origin/HEAD` before
+ * pulling" — i.e. discard any uncommitted edits inside
+ * `~/.astack/repos/<name>/`. Only valid for `kind=open-source` repos;
+ * the server returns `REPO_READONLY` for `custom` repos so the semantics
+ * of the flag stay invariant (see v0.10 spec §A1-A2).
+ *
+ * `.strict()` so unknown fields are rejected — any future flag must be
+ * added to this schema explicitly. Pre-v0.10 callers that POST with no
+ * body default to `{ force: false }` via the server-side fallback in
+ * `routes.repos.ts`.
+ */
+export const RefreshRepoRequestSchema = z
+  .object({
+    force: z.boolean().default(false)
+  })
+  .strict();
+export type RefreshRepoRequest = z.infer<typeof RefreshRepoRequestSchema>;
+
 /** Returns the repo after forced pull, plus freshly scanned skills. */
 export const RefreshRepoResponseSchema = z.object({
   repo: SkillRepoSchema,
   skills: z.array(SkillSchema),
   /** True if HEAD moved during this refresh. */
-  changed: z.boolean()
+  changed: z.boolean(),
+  /**
+   * Present iff the refresh took a short-circuit path. Today only one
+   * value: `"dirty_working_tree"` for non-force refresh against a dirty
+   * open-source mirror (`RepoService.refresh` logged
+   * `repo.refresh.dirty_skip`). Absent means "a normal pull + scan
+   * happened or `force=true` successfully reset the mirror".
+   *
+   * Web clients use this to show a warn-level toast that points users
+   * to the Force pull button instead of the misleading
+   * `Repo up to date` copy pre-v0.10 emitted.
+   *
+   * Mutually exclusive with `reset_performed`: a skipped refresh never
+   * reset, and a successful force-reset is not a skip.
+   */
+  skipped_reason: z.enum(["dirty_working_tree"]).optional(),
+  /**
+   * Present iff `force=true` triggered a `git reset --hard origin/HEAD`
+   * before the pull (i.e. the mirror was dirty and the user explicitly
+   * opted in). Absent means "no reset happened" — either the tree was
+   * clean already or `force` was not set.
+   *
+   * Clients use this to differentiate the toast copy:
+   *   `reset + pulled` vs plain `pulled`.
+   */
+  reset_performed: z.boolean().optional()
 });
 export type RefreshRepoResponse = z.infer<typeof RefreshRepoResponseSchema>;
 

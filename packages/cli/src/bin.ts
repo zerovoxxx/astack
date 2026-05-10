@@ -236,9 +236,16 @@ reposCmd
   .command("refresh <id>")
   .description("force pull + re-scan of a repo")
   .option("--daemon-url <url>", "override daemon URL")
+  .option(
+    "--force",
+    "reset --hard origin/HEAD before pull (open-source mirror only; discards uncommitted edits in ~/.astack/repos/<name>/)"
+  )
   .action((id: string, opts) =>
     wrap(() =>
-      runReposRefresh(parseInt(id, 10), { daemonUrl: opts.daemonUrl })
+      runReposRefresh(parseInt(id, 10), {
+        daemonUrl: opts.daemonUrl,
+        force: opts.force === true
+      })
     )
   );
 

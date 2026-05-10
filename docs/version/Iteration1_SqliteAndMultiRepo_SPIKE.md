@@ -2,7 +2,7 @@
 
 > 日期：2026-04-19
 > 脚本：`scripts/spike-node-sqlite.mjs`
-> Spec 引用：`docs/version/v0.2-sqlite-and-multi-repo.md § 4 PR0`
+> Spec 引用：`docs/version/Iteration1_SqliteAndMultiRepo.md § 4 PR0`
 
 ## 结论
 

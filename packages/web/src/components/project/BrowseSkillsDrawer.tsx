@@ -86,6 +86,17 @@ export function BrowseSkillsDrawer({
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  /**
+   * Repo IDs whose group is currently collapsed. Lives in the drawer
+   * (not inside `RepoGroup`) so it survives re-derivation of the
+   * `groups` array when the user types in the search box / changes
+   * the type filter — otherwise every keystroke would re-mount the
+   * RepoGroup tree and lose its open/closed state.
+   *
+   * Empty by default = all groups expanded, matching pre-collapse
+   * behaviour. Cleared on every drawer open via the load effect.
+   */
+  const [collapsedRepos, setCollapsedRepos] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
 
@@ -99,6 +110,7 @@ export function BrowseSkillsDrawer({
     setSelected(new Set());
     setQuery("");
     setTypeFilter("all");
+    setCollapsedRepos(new Set());
 
     (async () => {
       try {
@@ -217,6 +229,15 @@ export function BrowseSkillsDrawer({
     });
   }
 
+  function toggleRepoCollapsed(repoId: number): void {
+    setCollapsedRepos((prev) => {
+      const next = new Set(prev);
+      if (next.has(repoId)) next.delete(repoId);
+      else next.add(repoId);
+      return next;
+    });
+  }
+
   async function handleSubscribe(): Promise<void> {
     if (selected.size === 0) return;
     setSubmitting(true);
@@ -307,6 +328,8 @@ export function BrowseSkillsDrawer({
                 repo={g.repo}
                 rows={g.rows}
                 selected={selected}
+                collapsed={collapsedRepos.has(g.repo.id)}
+                onToggleCollapsed={() => toggleRepoCollapsed(g.repo.id)}
                 onToggle={toggleOne}
               />
             ))}
@@ -395,13 +418,25 @@ function RepoGroup({
   repo,
   rows,
   selected,
+  collapsed,
+  onToggleCollapsed,
   onToggle
 }: {
   repo: SkillRepo;
   rows: SkillRow[];
   selected: Set<string>;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   onToggle: (ref: string) => void;
 }): React.JSX.Element {
+  // Count selected (non-disabled) rows in this group so the header can
+  // surface a "3 / 17" hint while the group is collapsed — otherwise
+  // collapsing hides the user's progress.
+  const selectedInGroup = rows.reduce(
+    (n, r) => n + (selected.has(r.ref) ? 1 : 0),
+    0
+  );
+
   return (
     <section className="border-b border-line-subtle last:border-b-0">
       {/* Sticky repo group header.
@@ -410,26 +445,71 @@ function RepoGroup({
             owns the stacking context, so 10 is plenty.
           - shadow-[0_1px_0] on the bottom sim-draws the border beneath
             the sticky header, otherwise it detaches when the first row
-            scrolls under. */}
-      <div className="sticky top-0 z-10 bg-overlay border-b border-line-subtle px-5 py-2.5 flex items-center gap-2 text-xs text-fg-secondary">
+            scrolls under.
+          - Whole header is a button so click anywhere collapses /
+            expands the group. Keyboard users get focus + Enter/Space
+            via native <button>. */}
+      <button
+        type="button"
+        onClick={onToggleCollapsed}
+        aria-expanded={!collapsed}
+        aria-controls={`repo-group-${repo.id}-rows`}
+        className="sticky top-0 z-10 w-full bg-overlay border-b border-line-subtle px-5 py-2.5 flex items-center gap-2 text-xs text-fg-secondary hover:bg-surface-2 transition-colors duration-fast text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-inset"
+      >
+        <Chevron open={!collapsed} />
         <span className="font-semibold text-fg-primary">{repo.name}</span>
         {repo.kind === "open-source" ? (
           <Badge tone="warn">read-only</Badge>
         ) : null}
         <span className="text-fg-quaternary">·</span>
         <span className="tabular">{rows.length}</span>
-      </div>
-      <div>
-        {rows.map((r) => (
-          <SkillOptionRow
-            key={r.ref}
-            row={r}
-            selected={selected.has(r.ref)}
-            onToggle={() => onToggle(r.ref)}
-          />
-        ))}
-      </div>
+        {selectedInGroup > 0 ? (
+          <span className="ml-auto tabular text-accent">
+            {selectedInGroup} selected
+          </span>
+        ) : null}
+      </button>
+      {!collapsed ? (
+        <div id={`repo-group-${repo.id}-rows`}>
+          {rows.map((r) => (
+            <SkillOptionRow
+              key={r.ref}
+              row={r}
+              selected={selected.has(r.ref)}
+              onToggle={() => onToggle(r.ref)}
+            />
+          ))}
+        </div>
+      ) : null}
     </section>
+  );
+}
+
+/**
+ * Disclosure chevron that rotates on open. Visual twin of the one in
+ * `ReposPage`; kept inline here to avoid a UI primitive for a 14-line
+ * SVG used in two places.
+ */
+function Chevron({ open }: { open: boolean }): React.JSX.Element {
+  return (
+    <svg
+      aria-hidden
+      width="12"
+      height="12"
+      viewBox="0 0 14 14"
+      className={`text-fg-tertiary transition-transform duration-fast ${
+        open ? "rotate-90" : ""
+      }`}
+    >
+      <path
+        d="M5 3.5L8.5 7L5 10.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

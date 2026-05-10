@@ -4,7 +4,7 @@
  *
  * 目标：验证 node:sqlite 在 astack PR2/PR3 实际使用路径上的行为契约。
  *
- * 验证项（按 Spec docs/version/v0.2-sqlite-and-multi-repo.md § 4 PR0）：
+ * 验证项（按 Spec docs/version/Iteration1_SqliteAndMultiRepo.md § 4 PR0）：
  *   1. WAL pragma 读写返回值形态稳定
  *   2. 完整迁移流程：
  *      PRAGMA foreign_keys = OFF (事务外)

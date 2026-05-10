@@ -83,10 +83,18 @@ export class AstackClient {
     return this.request<DeleteRepoResponse>("DELETE", `/api/repos/${id}`);
   }
 
-  async refreshRepo(id: number): Promise<RefreshRepoResponse> {
+  async refreshRepo(
+    id: number,
+    opts: { force?: boolean } = {}
+  ): Promise<RefreshRepoResponse> {
+    // Always send a JSON body (even for default force=false) so the
+    // Content-Type header is set uniformly and the server's empty-body
+    // fallback never has to fire for real callers. See routes.repos.ts
+    // `parseRefreshBody` for the lenient fallback contract (v0.10 §A6).
     return this.request<RefreshRepoResponse>(
       "POST",
-      `/api/repos/${id}/refresh`
+      `/api/repos/${id}/refresh`,
+      { force: opts.force ?? false }
     );
   }
 

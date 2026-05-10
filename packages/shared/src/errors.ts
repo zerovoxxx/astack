@@ -42,7 +42,16 @@ export const ErrorCode = {
   REPO_BUSY: "REPO_BUSY",
   /** Repo contents do not match the expected structure (commands/, skills/). */
   REPO_STRUCTURE_INVALID: "REPO_STRUCTURE_INVALID",
-  /** Attempt to push to an open-source (readonly) repo. */
+  /**
+   * Thrown when a write operation is not allowed for the repo's `kind`.
+   *
+   *   - push to an `open-source` repo (historical v0.2 usage)
+   *   - force-refresh (reset --hard + pull) on a `custom` repo (v0.10)
+   *
+   * Both directions share the same contract: "this mutation is blocked
+   * by the repo's ownership model". `details.repo_kind` carries the
+   * actual kind so clients can produce kind-specific copy.
+   */
   REPO_READONLY: "REPO_READONLY",
 
   // ---- skills ----

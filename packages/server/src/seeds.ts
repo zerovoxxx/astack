@@ -15,7 +15,7 @@
  *      so that surface is real.
  *
  * Both risks were surfaced in the /plan-eng-review outside-voice pass
- * (see docs/version/v0.2-sqlite-and-multi-repo.md § 2 Known risks
+ * (see docs/version/Iteration1_SqliteAndMultiRepo.md § 2 Known risks
  * accepted) and the user explicitly chose to accept them.
  *
  * Removing a seed from this list mid-life does NOT retract already-

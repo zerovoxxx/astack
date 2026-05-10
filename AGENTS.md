@@ -30,31 +30,33 @@
 
 ### 4.1 `docs/version/` 文件命名规范
 
-所有迭代相关文档统一使用 `v<major>.<minor>-<kebab-slug>` 作为 **slug**，按用途区分后缀：
+所有迭代相关文档统一使用 harness-init 规范：`Iteration<N>_<PascalSlug>` 作为 **slug**，其中 `<N>` 为从 1 开始的整数迭代序号，按用途区分后缀：
 
 | 文件类型 | 命名模板 | 举例 | 谁生产 |
 |---------|---------|------|--------|
-| Spec 正文（迭代设计文档，权威） | `v0.X-<slug>.md` | `v0.7-local-skills.md` | `/spec` |
-| Spec 评审记录（sidecar） | `v0.X-<slug>_REVIEW.md` | `v0.7-local-skills_REVIEW.md` | `/spec_review` |
-| 代码评审报告（sidecar） | `v0.X-<slug>_CR.md` | `v0.6-mirror-hygiene_CR.md` | `/code_review` |
-| 其他专项报告 | `v0.X-<slug>_<UPPER_SNAKE>.md`（如 `_SPIKE`、`_POSTMORTEM`） | `v0.2-spike-report.md`（历史遗留，新增统一用后缀式） | 人工或对应命令 |
+| Spec 正文（迭代设计文档，权威） | `Iteration<N>_<PascalSlug>.md` | `Iteration6_LocalSkills.md` | `/spec` |
+| Spec 评审记录（sidecar） | `Iteration<N>_<PascalSlug>_REVIEW.md` | `Iteration6_LocalSkills_REVIEW.md` | `/spec_review` |
+| 代码评审报告（sidecar） | `Iteration<N>_<PascalSlug>_CR.md` | `Iteration5_MirrorHygiene_CR.md` | `/code_review` |
+| 其他专项报告 | `Iteration<N>_<PascalSlug>_<UPPER_SNAKE>.md`（如 `_SPIKE`、`_POSTMORTEM`） | `Iteration1_SqliteAndMultiRepo_SPIKE.md` | 人工或对应命令 |
 
 **规则：**
 
-1. **slug 不变**：同一迭代的 spec / REVIEW / CR 共用同一 slug，`ls v0.X-*.md` 一把捞齐该迭代全部文档。
-2. **sidecar 不进 INDEX 主列**：`INDEX.md` 的主行只链 spec 正文；sidecar 通过 spec 文档内部引用或 INDEX 的状态列内联链接。
-3. **禁止新的风格**：不再使用 `IterationX.Y_PascalSlug_*.md` 之类的风格，历史文件已在 v0.8 / 2026-04-23 统一 rename。
-4. **不在 `docs/version/` 下放非迭代文档**：泛技术笔记走 `docs/<topic>/`，不占 `v0.X` 命名空间。
+1. **slug 不变**：同一迭代的 spec / REVIEW / CR / SPIKE 共用同一 slug（含 `<N>` 与 `<PascalSlug>`），`ls Iteration<N>_*.md` 一把捞齐该迭代全部文档。
+2. **序号从 1 开始递增**：`<N>` 由 `/spec` 创建新迭代时分配为 `INDEX.md` 现有最大序号 + 1；不允许跳号，不允许小数（如 `Iteration0.X` / `Iteration1.5` 均禁止）。
+3. **`<N>` 与版本号解耦**：`<N>` 是 spec 文档的物理序号，业务版本号 `v<major>.<minor>` 维护在 `INDEX.md` 表格里，二者通过 INDEX 行映射对齐。
+4. **sidecar 不进 INDEX 主列**：`INDEX.md` 的主行只链 spec 正文；sidecar 通过 spec 文档内部引用或 INDEX 的状态列内联链接。
+5. **禁止其他风格**：不再使用 `v0.X-<kebab-slug>.md` 或 `Iteration0.X_*.md` 之类的旧风格，历史文件已在 2026-05-10 统一 rename。
+6. **不在 `docs/version/` 下放非迭代文档**：泛技术笔记走 `docs/<topic>/`，不占 `Iteration<N>_*` 命名空间。
 
 ## 5. 当前活跃迭代
 
-**最近完成：** v0.8 — Auto-adopt Reflow（2026-04-23，[spec](docs/version/v0.8-bootstrap-reflow.md)）— 修复"先注册项目→后加 repo→UI 不更新"的闭环 bug：`origin='auto'` LocalSkill 允许被 scanRaw 重分类，subscribe 成功后翻 `name_collision`；前端 `loadBootstrap` 切到幂等写；R8 / P8 沉淀至 retro
+**最近完成：** v0.8 — Auto-adopt Reflow（2026-04-23，[spec](docs/version/Iteration7_BootstrapReflow.md)）— 修复"先注册项目→后加 repo→UI 不更新"的闭环 bug：`origin='auto'` LocalSkill 允许被 scanRaw 重分类，subscribe 成功后翻 `name_collision`；前端 `loadBootstrap` 切到幂等写；R8 / P8 沉淀至 retro
 
 **历史完成：**
-- v0.7 — Local Skills as First-Class Citizens（2026-04-23，[spec](docs/version/v0.7-local-skills.md)）— PR1–PR6 全部落地，LocalSkill 作为一等公民域概念上线；UnmatchedBanner 常驻 / auto-adopt 仅 bootstrap 触发 / jsdom 测试坑已沉淀 retro
-- v0.6 — Open-source 镜像卫生 + Resolve 路径自愈 + 日志落盘（2026-04-22，[spec](docs/version/v0.6-mirror-hygiene.md)）— PR1–PR5 全部落地，R6/R7/P6/P7 已沉淀至 retro
-- v0.5 — Subscription Bootstrap for Legacy Projects（2026-04-21，[spec](docs/version/v0.5-subscription-bootstrap.md)）— PR1–PR5 已落地，PR6 E2E 规划中
-- v0.4 — Harness Tab + 系统级 Skill 首次落地（2026-04-20，[spec](docs/version/v0.4-harness-tab.md)）
+- v0.7 — Local Skills as First-Class Citizens（2026-04-23，[spec](docs/version/Iteration6_LocalSkills.md)）— PR1–PR6 全部落地，LocalSkill 作为一等公民域概念上线；UnmatchedBanner 常驻 / auto-adopt 仅 bootstrap 触发 / jsdom 测试坑已沉淀 retro
+- v0.6 — Open-source 镜像卫生 + Resolve 路径自愈 + 日志落盘（2026-04-22，[spec](docs/version/Iteration5_MirrorHygiene.md)）— PR1–PR5 全部落地，R6/R7/P6/P7 已沉淀至 retro
+- v0.5 — Subscription Bootstrap for Legacy Projects（2026-04-21，[spec](docs/version/Iteration4_SubscriptionBootstrap.md)）— PR1–PR5 已落地，PR6 E2E 规划中
+- v0.4 — Harness Tab + 系统级 Skill 首次落地（2026-04-20，[spec](docs/version/Iteration3_HarnessTab.md)）
 
 ## 6. gstack
 

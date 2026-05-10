@@ -7,7 +7,7 @@
  * logic (hash computation, collision detection, lock acquisition) out of
  * the persistence layer.
  *
- * See docs/version/v0.7-local-skills.md §A1 / §1.4.
+ * See docs/version/Iteration6_LocalSkills.md §A1 / §1.4.
  */
 
 import type {

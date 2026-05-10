@@ -39,7 +39,8 @@ import {
   gitGetHead,
   gitIsClean,
   gitPull,
-  gitRemoteHead
+  gitRemoteHead,
+  gitResetHard
 } from "../git.js";
 import type { LockManager } from "../lock.js";
 import type { Logger } from "../logger.js";
@@ -80,6 +81,16 @@ export interface GitImpl {
    * hand-edits the user made inside ~/.astack/repos/<name>.
    */
   isClean(localPath: string): Promise<boolean>;
+  /**
+   * Hard-reset the working tree + index to `ref` (e.g. `"origin/HEAD"`).
+   * Optional because pre-v0.10 test doubles of this surface may not
+   * provide it; force-refresh (`refresh(id, { force: true })`) against
+   * a dirty open-source mirror requires it and throws `INTERNAL` if
+   * the dependency is missing — we refuse to silently fall back to
+   * skip-and-warn when the user explicitly asked for a reset
+   * (v0.10 spec §A5, R6).
+   */
+  resetHard?(localPath: string, ref: string): Promise<void>;
 }
 
 export const defaultGitImpl: GitImpl = {
@@ -87,7 +98,8 @@ export const defaultGitImpl: GitImpl = {
   pull: gitPull,
   getHead: gitGetHead,
   remoteHead: gitRemoteHead,
-  isClean: gitIsClean
+  isClean: gitIsClean,
+  resetHard: gitResetHard
 };
 
 export interface RegisterRepoOutput {
@@ -102,6 +114,20 @@ export interface RefreshOutput {
   skills: Skill[];
   /** True if HEAD moved during this refresh. */
   changed: boolean;
+  /**
+   * Set to `"dirty_working_tree"` when a non-force refresh short-circuited
+   * because the open-source mirror had uncommitted changes
+   * (v0.10). Absent on both happy path and force-reset path.
+   * Mutually exclusive with `reset_performed`.
+   */
+  skipped_reason?: "dirty_working_tree";
+  /**
+   * Set to `true` when `opts.force === true` and the mirror was dirty
+   * AND a `reset --hard origin/HEAD` was executed before the pull
+   * (v0.10). Absent when no reset happened (clean tree or non-force).
+   * Mutually exclusive with `skipped_reason`.
+   */
+  reset_performed?: boolean;
 }
 
 export class RepoService {
@@ -239,11 +265,44 @@ export class RepoService {
    * For `open-source` repos we additionally check the working tree is
    * clean before pulling — if the user hand-edited a SKILL.md inside
    * ~/.astack/repos/<name>, we don't want to silently blow it away.
-   * A dirty open-source repo short-circuits to no-op + warning; the
-   * user can resolve manually (revert or commit + push) and refresh
-   * again.
+   *
+   * Two behaviors based on `opts.force` (v0.10):
+   *
+   *   - `force=false` (default) — dirty open-source mirror short-circuits
+   *     to no-op + warn log. Response carries `skipped_reason:
+   *     "dirty_working_tree"` so the caller (Web toast / CLI) can prompt
+   *     the user to retry with `--force` instead of mis-labelling the
+   *     skip as "up to date".
+   *
+   *   - `force=true` — dirty open-source mirror is auto-healed via
+   *     `git reset --hard origin/HEAD` before the pull. Emits
+   *     `RepoMirrorReset(reason:"user_forced")` SSE. Response carries
+   *     `reset_performed:true`. A clean mirror under `force=true` falls
+   *     through to the plain pull path with no reset and no special
+   *     response field (nothing to tell the user about).
+   *
+   *   - `force=true` on a `custom` repo is rejected with REPO_READONLY
+   *     (spec §A1-A2): the flag has no defined semantics there because
+   *     dirty custom repos may carry legitimate uncommitted push-flow
+   *     intermediates that `reset --hard` would destroy. Front-end
+   *     should not render the Force button for custom repos, so this
+   *     error is a defence-in-depth check for CLI / third-party callers.
+   *
+   * Note on R6 (cross-service git-operation guardrails): this path
+   * duplicates the `remoteHead → resetHard → warn + emit
+   * RepoMirrorReset` sequence already present in
+   * `SyncService.ensureMirrorClean (sync.ts:1204-1240)`. The two copies
+   * are intentional (spec §A4) — they emit different logger keys
+   * (`sync.mirror_reset` vs `repo.refresh.user_forced_reset`) and
+   * belong to services with different DI surfaces. Any future change
+   * to the reset policy MUST be applied in both places; grep for
+   * `resetHard(` to find all call sites.
    */
-  async refresh(repoId: number): Promise<RefreshOutput> {
+  async refresh(
+    repoId: number,
+    opts: { force?: boolean } = {}
+  ): Promise<RefreshOutput> {
+    const force = opts.force ?? false;
     const repo = this.mustFindById(repoId);
 
     return this.deps.locks.withLock(repoId, async () => {
@@ -255,27 +314,85 @@ export class RepoService {
         );
       }
 
+      // v0.10 §A1: `force` only has defined semantics on open-source
+      // repos. Reject on custom repos defensively (UI won't render the
+      // button, but CLI / third-party callers might still try).
+      if (force && repo.kind !== RepoKind.OpenSource) {
+        throw new AstackError(
+          ErrorCode.REPO_READONLY,
+          "force refresh only allowed on open-source repos",
+          { repo_id: repoId, repo_kind: repo.kind }
+        );
+      }
+
+      let resetPerformed = false;
+
       // Safety check: for read-only (open-source) repos, refuse to pull
-      // over uncommitted local edits. This does NOT apply to 'custom'
-      // repos because those are expected to have user edits that the
-      // push workflow handles separately.
+      // over uncommitted local edits unless the user explicitly opted
+      // in via `force:true`. This does NOT apply to 'custom' repos
+      // because those are expected to have user edits that the push
+      // workflow handles separately.
       if (repo.kind === RepoKind.OpenSource) {
         const clean = await this.git.isClean(repo.local_path);
         if (!clean) {
-          this.deps.logger.warn("repo.refresh.dirty_skip", {
+          if (!force) {
+            this.deps.logger.warn("repo.refresh.dirty_skip", {
+              repo_id: repoId,
+              repo_name: repo.name,
+              detail:
+                "open-source repo has uncommitted local edits; skipping pull to avoid overwriting them"
+            });
+            const skills = this.filterOutSystemSkills(
+              this.skills.listByRepo(repoId)
+            );
+            this.deps.events.emit({
+              type: EventType.RepoRefreshed,
+              payload: { repo, changed: false }
+            });
+            return {
+              repo,
+              skills,
+              changed: false,
+              skipped_reason: "dirty_working_tree"
+            };
+          }
+
+          // v0.10 force path: reset to origin/HEAD, then fall through
+          // to the normal pull + scan below. See §A5: if `resetHard`
+          // isn't wired into the git impl (pre-v0.10 test double), we
+          // refuse to silently downgrade to skip — the user explicitly
+          // asked for a reset, so absence is a bug.
+          if (!this.git.resetHard) {
+            throw new AstackError(
+              ErrorCode.INTERNAL,
+              "force refresh requires resetHard git capability which is not wired in",
+              { repo_id: repoId }
+            );
+          }
+
+          // Probe remote HEAD first so fresh clones / missing
+          // `refs/remotes/origin/HEAD` fail with a specific git_stderr
+          // instead of an ambiguous reset error (mirrors the ordering
+          // used by `SyncService.ensureMirrorClean`).
+          await this.git.remoteHead(repo.local_path);
+          await this.git.resetHard(repo.local_path, "origin/HEAD");
+          resetPerformed = true;
+
+          this.deps.logger.warn("repo.refresh.user_forced_reset", {
             repo_id: repoId,
             repo_name: repo.name,
             detail:
-              "open-source repo has uncommitted local edits; skipping pull to avoid overwriting them"
+              "user-triggered force refresh: reset dirty open-source mirror to origin/HEAD before pull"
           });
-          const skills = this.filterOutSystemSkills(
-            this.skills.listByRepo(repoId)
-          );
           this.deps.events.emit({
-            type: EventType.RepoRefreshed,
-            payload: { repo, changed: false }
+            type: EventType.RepoMirrorReset,
+            payload: {
+              repo_id: repo.id,
+              repo_name: repo.name,
+              repo_kind: "open-source",
+              reason: "user_forced"
+            }
           });
-          return { repo, skills, changed: false };
         }
       }
 
@@ -309,7 +426,12 @@ export class RepoService {
         payload: { repo: updated, changed }
       });
 
-      return { repo: updated, skills, changed };
+      // Only emit `reset_performed` when a reset actually ran. The
+      // field is mutually exclusive with `skipped_reason` by construction
+      // (they live in different return branches — §A7).
+      return resetPerformed
+        ? { repo: updated, skills, changed, reset_performed: true }
+        : { repo: updated, skills, changed };
     });
   }
 

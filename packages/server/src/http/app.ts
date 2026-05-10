@@ -157,7 +157,7 @@ export function createApp(opts: CreateAppOptions): AppInstance {
   // ProjectBootstrapService. Mirrors the `systemSkillServiceRef`
   // pattern above: we want a cycle-free constructor but still let
   // LocalSkillService.suggestFromUnmatched call into bootstrap.scan
-  // once everything is wired. See docs/version/v0.7-local-skills.md §1.5.
+  // once everything is wired. See docs/version/Iteration6_LocalSkills.md §1.5.
   const localSkillService = new LocalSkillService({
     db,
     events,

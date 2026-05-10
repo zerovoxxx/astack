@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS seed_decisions (
 -- Per-machine metadata index of .claude/** entries the user has adopted
 -- (or that bootstrap auto-adopted). Does NOT mirror .astack.json — local
 -- skills are not published, they are just tracked. See
--- docs/version/v0.7-local-skills.md §A1 / §A3.
+-- docs/version/Iteration6_LocalSkills.md §A1 / §A3.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS local_skills (
   id            TEXT PRIMARY KEY,                        -- uuid v4

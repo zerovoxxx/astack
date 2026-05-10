@@ -142,8 +142,14 @@ export const api = {
     request("POST", "/api/repos", body),
   deleteRepo: (id: number): Promise<DeleteRepoResponse> =>
     request("DELETE", `/api/repos/${id}`),
-  refreshRepo: (id: number): Promise<RefreshRepoResponse> =>
-    request("POST", `/api/repos/${id}/refresh`),
+  refreshRepo: (
+    id: number,
+    opts: { force?: boolean } = {}
+  ): Promise<RefreshRepoResponse> =>
+    // Always send a body (even {force:false}) so the request is always
+    // application/json and the server's empty-body fallback never fires
+    // for real clients. See v0.10 spec §A6.
+    request("POST", `/api/repos/${id}/refresh`, { force: opts.force ?? false }),
   listRepoSkills: (id: number): Promise<ListRepoSkillsResponse> =>
     request("GET", `/api/repos/${id}/skills`),
 

@@ -3,7 +3,62 @@
 > 每个迭代的范围边界，防止跨迭代的范围蔓延。由 `/spec` 命令自动维护。
 > spec_review 评审时作为迭代边界遵守（A3）的评审基准。
 >
-> **文件命名规范**：迭代文档统一 slug `v0.X-<kebab-slug>`，spec 正文无后缀，评审用 `_REVIEW.md`，代码评审用 `_CR.md`。详见 [`AGENTS.md §4.1`](../../AGENTS.md#41-docsversion-文件命名规范)。
+> **文件命名规范**：迭代文档统一 slug `Iteration<N>_<PascalSlug>`（harness-init 规范，`<N>` 从 1 开始的整数序号），spec 正文无后缀，评审用 `_REVIEW.md`，代码评审用 `_CR.md`，专项报告用 `_SPIKE.md` / `_POSTMORTEM.md` 等。详见 [`AGENTS.md §4.1`](../../AGENTS.md#41-docsversion-文件命名规范)。
+
+## v0.10 — Force Refresh：脏 open-source 镜像的显式 reset + pull 入口
+
+**本迭代做：**
+- `packages/shared/src/schemas/repos.ts`：新增 `RefreshRepoRequestSchema = z.object({ force: z.boolean().default(false) }).strict()`；`RefreshRepoResponseSchema` 扩 `skipped_reason?: "dirty_working_tree"` + `reset_performed?: boolean`（§A7 互斥）
+- `packages/shared/src/schemas/events.ts`：`RepoMirrorResetPayloadSchema.reason` 枚举扩 `"user_forced"`（additive，不 breaking 既有 listener）；`EventType.RepoMirrorReset` JSDoc 同步 v0.10 第二个调用方
+- `packages/shared/src/errors.ts`：`ErrorCode.REPO_READONLY` JSDoc 扩展到对称用法（push-on-open-source / force-on-custom）
+- `packages/server/src/services/repo.ts`：
+  - `GitImpl` 扩 optional `resetHard?`；`defaultGitImpl.resetHard = gitResetHard`
+  - `RefreshOutput` 接口扩 `skipped_reason?` / `reset_performed?`
+  - `refresh(repoId, opts?: { force?: boolean })` 签名 + 三分支（open-source+dirty+!force → skip+`skipped_reason`；open-source+dirty+force → `remoteHead → resetHard("origin/HEAD") → warn → emit RepoMirrorReset(user_forced)` 然后 fall-through 到正常 pull；custom+force → `REPO_READONLY`；clean / 其余 → 原路径）
+  - 新 logger key `repo.refresh.user_forced_reset`
+- `packages/server/src/http/routes.repos.ts`：`POST /:id/refresh` 用 `parseRefreshBody(req)` 手动解析 body（空 body → `{force:false}`，非法 JSON → 空 body fallback，非 boolean `force` / 额外字段 → ZodError → 全局 handler 转 `VALIDATION_FAILED` 400）；response 带 optional `skipped_reason` / `reset_performed` 字段
+- `packages/cli/src/client.ts::refreshRepo(id, opts?)`：始终 POST JSON body `{force:...}`
+- `packages/cli/src/commands/repos.ts::runReposRefresh`：分支 copy（`skipped_reason` → `printWarn` 引导 `--force`；`reset_performed` → `reset + pulled`；其余原 copy 不变）
+- `packages/cli/src/bin.ts`：`repos refresh <id>` 加 `--force` option
+- `packages/web/src/lib/api.ts::refreshRepo(id, opts?)`：始终带 JSON body
+- `packages/web/src/pages/ReposPage.tsx`：
+  - `RepoCardProps` 加 `onForceRefresh?: () => Promise<void>`，`undefined` → 按钮不渲染
+  - `RepoCard` 渲染 `[Refresh][Force pull?][Remove]` 三按钮，Force pull 仅 `kind==="open-source"` 时出现
+  - 独立 `forcing` useState，`busy = refreshing || forcing`
+  - `handleForceRefresh(repo)` 用 `window.confirm` 弹 `Force pull will reset ~/.astack/repos/<name>/ to origin/HEAD and DISCARD any local edits...` 文案（§A3 本地化路径）
+  - `handleRefresh(id, {force})` toast 三分支（skipped 用 `toast.warn` 引导 Force pull / reset_performed 用 `toast.ok "Mirror reset + pulled"` / 其余保留 v0.9 copy）
+
+**本迭代不做（延后到 v0.11+）：**
+- custom repo 的 force pull 放开（语义与未提交 push 流程强耦合，需单独 spec）
+- Force pull 批量版本（一次性对所有 dirty mirror 执行，危险度过高）
+- Force pull dry-run 预览（`git diff HEAD origin/HEAD` 可视化；UI 工程量大，用户可用 IDE 看）
+- `RepoService.refresh` 自身改成 "auto-heal like SyncService"（违背 v0.6 "skip + warn 是诚实信号" 的既有决策）
+- `RepoMirrorReset.reason` 加 `"detached_head"` 等新值（无对应代码路径，不预先加值）
+- CLI `--force` 的交互式 prompt（CLI 流式 API，用户传 `--force` 即视为确认）
+- `RepoMirrorReset` payload 扩 `reset_by: "user" | "auto"`（`reason` 已经区分够）
+- 新 `ErrorCode.REPO_DIRTY_WORKING_TREE`（skipped 是 HTTP 200 成功短路，用 `skipped_reason` 字段不用错误码）
+- 抽 `ensureMirrorClean` 到公共 helper（§A4：两份调用方 DI 表面不同，保持各自实现 + 注释互指）
+- Project Detail 页同步加"强制 sync"（sync 路径 `ensureMirrorClean` 已自愈，无 UI 行动需求）
+
+## v0.9 — Repo 卡片操作按钮外显平铺
+
+**本迭代做：**
+- `packages/web/src/pages/ReposPage.tsx`：移除 `RepoMenu` + `MenuItem` 组件（原 `⋯` popover 菜单），在 `RepoCard` 右上操作区直接渲染两个 `Button size="sm"`：`variant="ghost"` 的 Refresh 与 `variant="danger"` 的 Remove
+- Refresh 按钮点击走卡片内本地 `refreshing: useState<boolean>`，await 父组件 `handleRefresh(id)`（返回 Promise）期间禁用 + 文案切 `Refreshing…`；`onRefresh` prop 类型由 `() => void` 收紧为 `() => Promise<void>`
+- 按钮容器保留 `pointer-events-auto` + `stopPropagation` 契约，避免点击按钮触发卡片整体展开/折叠（与 v0.3 建立的"整卡可点"契约共存）
+- 不扩 `Button` primitive（现有 `size` / `variant` 已覆盖 `sm` + `ghost` + `danger`，R1 grep 对齐过）
+- `Remove` 按钮继续走现有 `handleDelete` 中的原生 `confirm(...)`（v0.3 决策 T8 Dialog primitive 仍 out of scope）
+- E2E 覆盖：Refresh 可见可点 + loading 态切换；Remove 可见可点 + confirm 取消/确认两分支；点击按钮时 `expanded` 不翻转
+
+**本迭代不做（延后到 v0.10+）：**
+- 批量 "Refresh all"（跨卡片操作）
+- Open-source 脏镜像的"强制 pull / reset --hard"显式 UI（后端 `gitResetHard` 已就绪但 v0.6 显式保留 `RepoService.refresh` 的 skip+warn 语义）
+- Refresh 进度细粒度（pulling → scanning → upserting 分段 SSE）
+- 第三个以上 repo action（查看日志 / 复制 clone URL / 固定 version）
+- 抽 unified `Menu` primitive（当前无第二个消费点，避免过早泛化）
+- `ProjectDetailPage` 等其他页面类似 `⋯` 菜单的一致化改造
+- 移动端按钮区空间不足时回退菜单的响应式方案
+- 卡片级键盘快捷键（`R` / `D`）—— `CommandPalette` 已有 repo 命令入口
 
 ## v0.8 — Auto-adopt Reflow（后加 repo 能重分类已兜底 LocalSkill）
 
@@ -158,4 +213,4 @@
 
 ## v0.2 — sqlite 换底 + 多仓库目录兼容
 
-已 SHIPPED，见 [v0.2-sqlite-and-multi-repo.md](./v0.2-sqlite-and-multi-repo.md) § 1。
+已 SHIPPED，见 [Iteration1_SqliteAndMultiRepo.md](./Iteration1_SqliteAndMultiRepo.md) § 1。

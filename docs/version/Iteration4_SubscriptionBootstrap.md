@@ -4,7 +4,7 @@
 
 > Spec v1 → v2（修完 v1 review 的 2 P0 + 5 P1 + 3 P2）
 > 创建于 2026-04-21，分支 main
-> v2 修订日期：2026-04-21；原 review 报告：[v0.5-subscription-bootstrap_REVIEW.md](./v0.5-subscription-bootstrap_REVIEW.md)
+> v2 修订日期：2026-04-21；原 review 报告：[Iteration4_SubscriptionBootstrap_REVIEW.md](./Iteration4_SubscriptionBootstrap_REVIEW.md)
 
 ## 0. 迭代缘起
 

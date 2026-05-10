@@ -1,10 +1,11 @@
 import type * as React from "react";
 /**
- * Repos page — Graphite UI v0.3.
+ * Repos page — Graphite UI v0.3 (actions inlined in v0.9, force pull in v0.10).
  *
  * Card anatomy:
  *   ┌────────────────────────────────────────────────────────────────┐
- *   │  anthropic-skills  [BUILT-IN] [OPEN SOURCE]              ⋯     │
+ *   │  anthropic-skills  [BUILT-IN] [OPEN SOURCE]                    │
+ *   │                              [Refresh] [Force pull] [Remove]   │
  *   │  ○ read-only  ·  17 skills                                     │
  *   │                                                                │
  *   │  github.com/anthropics/skills                                  │
@@ -14,8 +15,15 @@ import type * as React from "react";
  *  - Two orthogonal tags: provenance (Built-in) + ownership (Custom /
  *    Open source). Seeded repos show both.
  *  - Entire card is the expand affordance (click anywhere).
- *  - Actions move into a ⋯ menu (Refresh / Remove) so the card
- *    header stays clean.
+ *  - Actions inlined as small ghost/danger buttons. The pre-v0.9 `⋯`
+ *    menu was removed: with only two options, a popover cost the user
+ *    an extra click without saving any screen density.
+ *    See docs/version/Iteration8_RepoActionsInline.md.
+ *  - `Force pull` only renders for `kind === "open-source"`. It resets
+ *    the local mirror to `origin/HEAD` and pulls — destructive; gated
+ *    behind `window.confirm(...)` that spells out the full
+ *    `~/.astack/repos/<name>/` path so users can recall any hand-edits.
+ *    See docs/version/Iteration9_ForceRefresh.md.
  *  - Status shown as dot + inline text, not pills.
  */
 
@@ -24,7 +32,6 @@ import { isBuiltinSeedUrl } from "@astack/shared";
 import {
   useCallback,
   useEffect,
-  useRef,
   useState,
   type MouseEvent as ReactMouseEvent
 } from "react";
@@ -34,7 +41,6 @@ import {
   Button,
   Card,
   EmptyState,
-  IconButton,
   InlineTag,
   Skeleton,
   StatusDot
@@ -179,20 +185,66 @@ export function ReposPage(): React.JSX.Element {
     });
   });
 
-  async function handleRefresh(id: number): Promise<void> {
+  async function handleRefresh(
+    id: number,
+    opts: { force?: boolean } = {}
+  ): Promise<void> {
+    const force = opts.force ?? false;
     try {
-      const res = await api.refreshRepo(id);
-      toast.ok(
-        res.changed ? "Repo refreshed — HEAD moved" : "Repo up to date"
-      );
+      const res = await api.refreshRepo(id, { force });
+      // v0.10 toast branching — four outcomes derived from (force,
+      // response.skipped_reason, response.reset_performed):
+      //   1. skipped_reason          → warn + actionable hint (Force pull)
+      //   2. reset_performed         → ok + explicit "reset + pulled"
+      //   3. force=true but clean    → ok + "Force pull completed" so the
+      //      user gets explicit acknowledgement that the button did
+      //      something (isClean check ran + pull ran) even when no reset
+      //      was needed. Without this branch the toast would read
+      //      "Repo up to date" for both Refresh and Force pull on a
+      //      clean mirror, making the Force button feel unresponsive.
+      //   4. default (force=false)   → pre-v0.10 copy, unchanged
+      if (res.skipped_reason === "dirty_working_tree") {
+        toast.warn(
+          "Refresh skipped",
+          "Mirror has uncommitted changes in ~/.astack/repos/. Click Force pull to reset it to origin/HEAD and retry."
+        );
+      } else if (res.reset_performed) {
+        toast.ok(
+          "Mirror reset + pulled",
+          res.changed ? "HEAD moved" : "no upstream change"
+        );
+      } else if (force) {
+        toast.ok(
+          "Force pull completed",
+          res.changed
+            ? "Mirror was clean; HEAD moved"
+            : "Mirror was already clean and up to date"
+        );
+      } else {
+        toast.ok(
+          res.changed ? "Repo refreshed — HEAD moved" : "Repo up to date"
+        );
+      }
       await load();
       void fetchSkills(id);
     } catch (err) {
       toast.error(
-        "Refresh failed",
+        force ? "Force pull failed" : "Refresh failed",
         err instanceof AstackError ? err.message : String(err)
       );
     }
+  }
+
+  // §A3: the destructive confirm lives in `RepoCard::handleForceClick`
+  // so it gates BEFORE any button state flips. Doing `setForcing(true)`
+  // first would cause React to flush the "Pulling…" label to the DOM
+  // before `window.confirm` blocks (async function synchronous prefix
+  // runs to completion before confirm's blocking UI appears), producing
+  // a visible state flash even if the user clicks Cancel. This thin
+  // wrapper assumes the caller already got user consent and simply
+  // delegates to handleRefresh with force=true.
+  async function handleForceRefresh(repo: SkillRepo): Promise<void> {
+    await handleRefresh(repo.id, { force: true });
   }
 
   async function handleDelete(repo: SkillRepo): Promise<void> {
@@ -261,6 +313,11 @@ export function ReposPage(): React.JSX.Element {
               expanded={expanded.has(r.id)}
               onToggle={() => toggle(r.id)}
               onRefresh={() => handleRefresh(r.id)}
+              onForceRefresh={
+                r.kind === "open-source"
+                  ? () => handleForceRefresh(r)
+                  : undefined
+              }
               onDelete={() => handleDelete(r)}
             />
           ))}
@@ -287,7 +344,19 @@ interface RepoCardProps {
   skillsState: RepoSkillsState | undefined;
   expanded: boolean;
   onToggle: () => void;
-  onRefresh: () => void;
+  /**
+   * Returns a Promise so the card can render a local loading state
+   * (button disabled + "Refreshing…" label) until the refresh settles.
+   */
+  onRefresh: () => Promise<void>;
+  /**
+   * Force pull handler — only wired for open-source repos (v0.10).
+   * `undefined` means the button is not rendered. The card itself runs
+   * the destructive `window.confirm` BEFORE calling this (§A3), so by
+   * the time this fires the user has agreed; the parent's only job is
+   * to issue the API call and surface toast/reload side-effects.
+   */
+  onForceRefresh?: () => Promise<void>;
   onDelete: () => void;
 }
 
@@ -297,11 +366,60 @@ function RepoCard({
   expanded,
   onToggle,
   onRefresh,
+  onForceRefresh,
   onDelete
 }: RepoCardProps): React.JSX.Element {
   const counts = countByType(skillsState?.skills ?? []);
   const hasSkills =
     skillsState && !skillsState.loading && skillsState.skills.length > 0;
+
+  // v0.9: local-only loading flag. Not hoisted to parent (§A1 of spec):
+  // only the button itself needs to know, and the card is rebuilt from
+  // fresh props after `load()` completes anyway.
+  const [refreshing, setRefreshing] = useState(false);
+  // v0.10: independent loading flag for force pull. We keep it separate
+  // from `refreshing` so (a) the confirm-canceled case never touches
+  // button state and (b) the two button copies can change in parallel
+  // without wiring a shared "which action is running" enum.
+  const [forcing, setForcing] = useState(false);
+  const busy = refreshing || forcing;
+
+  async function handleRefreshClick(): Promise<void> {
+    if (busy) return;
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function handleForceClick(): Promise<void> {
+    if (busy || !onForceRefresh) return;
+    // §A3: gate on the destructive confirm BEFORE touching any button
+    // state. Flipping `forcing` first would make React flush the
+    // "Pulling…" label to the DOM during the async function's
+    // synchronous prefix (which completes before `window.confirm`
+    // blocks), so a user clicking Cancel still sees the button
+    // momentarily change. Confirming first means Cancel is a true
+    // no-op — no React commit, no visual flash.
+    //
+    // Copy mandates showing the literal `~/.astack/repos/<name>/`
+    // path so the user can recall whether they actually made edits
+    // there. Vague "mirror will be reset" copy hides the consequence
+    // from users who are unfamiliar with Astack's internal layout.
+    const ok = window.confirm(
+      `Force pull will reset ~/.astack/repos/${repo.name}/ to origin/HEAD ` +
+        `and DISCARD any local edits in that directory. Continue?`
+    );
+    if (!ok) return;
+    setForcing(true);
+    try {
+      await onForceRefresh();
+    } finally {
+      setForcing(false);
+    }
+  }
 
   return (
     <Card className="overflow-hidden">
@@ -350,12 +468,42 @@ function RepoCard({
           </div>
 
           {/* Actions — pointer-events-auto so they remain clickable over
-              the invisible expand button. */}
+              the invisible expand button. stopPropagation so clicking a
+              button doesn't also toggle the card. */}
           <div
-            className="pointer-events-auto shrink-0"
+            className="pointer-events-auto shrink-0 flex items-center gap-1.5"
             onClick={(e: ReactMouseEvent) => e.stopPropagation()}
           >
-            <RepoMenu onRefresh={onRefresh} onDelete={onDelete} />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void handleRefreshClick()}
+              disabled={busy}
+              aria-label={`Refresh ${repo.name}`}
+            >
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </Button>
+            {onForceRefresh ? (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => void handleForceClick()}
+                disabled={busy}
+                aria-label={`Force pull ${repo.name}`}
+                title="Reset ~/.astack/repos/<name>/ to origin/HEAD and pull. Discards any local edits in that directory."
+              >
+                {forcing ? "Pulling…" : "Force pull"}
+              </Button>
+            ) : null}
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={onDelete}
+              disabled={busy}
+              aria-label={`Remove ${repo.name}`}
+            >
+              Remove
+            </Button>
           </div>
         </div>
       </div>
@@ -659,107 +807,6 @@ function SkillRow({ skill }: { skill: Skill }): React.JSX.Element {
         </dd>
       )}
     </div>
-  );
-}
-
-// ---------- Row menu ----------
-
-function RepoMenu({
-  onRefresh,
-  onDelete
-}: {
-  onRefresh: () => void;
-  onDelete: () => void;
-}): React.JSX.Element {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-
-  // Close on outside click / Escape.
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent): void {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent): void {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("mousedown", onDown);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <IconButton
-        label="Actions"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
-          <circle cx="3" cy="7" r="1.2" fill="currentColor" />
-          <circle cx="7" cy="7" r="1.2" fill="currentColor" />
-          <circle cx="11" cy="7" r="1.2" fill="currentColor" />
-        </svg>
-      </IconButton>
-      {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 top-9 z-10 min-w-[160px] py-1
-            bg-surface-3 border border-line rounded-md shadow-xl shadow-black/30
-            backdrop-blur"
-        >
-          <MenuItem
-            onClick={() => {
-              setOpen(false);
-              onRefresh();
-            }}
-          >
-            Refresh
-          </MenuItem>
-          <MenuItem
-            destructive
-            onClick={() => {
-              setOpen(false);
-              onDelete();
-            }}
-          >
-            Remove
-          </MenuItem>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function MenuItem({
-  children,
-  onClick,
-  destructive = false
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  destructive?: boolean;
-}): React.JSX.Element {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      className={[
-        "w-full text-left px-3 h-7 flex items-center text-sm",
-        destructive
-          ? "text-error hover:bg-error/10"
-          : "text-fg-primary hover:bg-surface-2"
-      ].join(" ")}
-    >
-      {children}
-    </button>
   );
 }
 

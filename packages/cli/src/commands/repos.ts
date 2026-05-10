@@ -90,14 +90,34 @@ export async function runReposRemove(
 
 export async function runReposRefresh(
   id: number,
-  opts: { daemonUrl?: string } = {}
+  opts: { daemonUrl?: string; force?: boolean } = {}
 ): Promise<void> {
   const client = new AstackClient({
     baseUrl: opts.daemonUrl ?? DEFAULT_DAEMON_URL
   });
   await ensureDaemonOnline(client);
 
-  const { changed, skills } = await client.refreshRepo(id);
+  const force = opts.force ?? false;
+  const { changed, skills, skipped_reason, reset_performed } =
+    await client.refreshRepo(id, { force });
+
+  // v0.10 branch copy:
+  //   - skipped_reason → warn the user to retry with --force
+  //   - reset_performed → explicit "reset + pulled" acknowledgement
+  //   - otherwise → pre-v0.10 copy, unchanged for existing CLI users
+  if (skipped_reason === "dirty_working_tree") {
+    printWarn(
+      `skipped: repo id=${id} mirror has uncommitted changes in ~/.astack/repos/<name>/ — ` +
+        `rerun with --force to discard them and pull (open-source repos only)`
+    );
+    return;
+  }
+  if (reset_performed) {
+    printOk(
+      `reset + pulled repo id=${id} (${changed ? "HEAD moved" : "no changes"}; ${skills.length} skill(s))`
+    );
+    return;
+  }
   printOk(
     `refreshed repo id=${id} (${changed ? "HEAD moved" : "no changes"}; ${skills.length} skill(s))`
   );

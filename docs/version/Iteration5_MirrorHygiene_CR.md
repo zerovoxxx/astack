@@ -1,11 +1,11 @@
-> **说明：** 本文件由 `/code_review` 命令（Mode A · 方案审查 / 代码复核）在 2026-04-22 生成，基于 [v0.6-mirror-hygiene.md](./v0.6-mirror-hygiene.md) 对已落地的 PR1–PR5 做逐 Phase 审查并归档。
+> **说明：** 本文件由 `/code_review` 命令（Mode A · 方案审查 / 代码复核）在 2026-04-22 生成，基于 [Iteration5_MirrorHygiene.md](./Iteration5_MirrorHygiene.md) 对已落地的 PR1–PR5 做逐 Phase 审查并归档。
 
 # Iteration v0.6 — Open-source 镜像卫生 + Resolve 路径自愈 + 日志落盘 · Code Review
 
 | 字段 | 内容 |
 |------|------|
-| **Spec 文档** | [v0.6-mirror-hygiene.md](./v0.6-mirror-hygiene.md) |
-| **Spec 评审（写时评审）** | [v0.6-mirror-hygiene_REVIEW.md](./v0.6-mirror-hygiene_REVIEW.md) |
+| **Spec 文档** | [Iteration5_MirrorHygiene.md](./Iteration5_MirrorHygiene.md) |
+| **Spec 评审（写时评审）** | [Iteration5_MirrorHygiene_REVIEW.md](./Iteration5_MirrorHygiene_REVIEW.md) |
 | **CR 开始** | 2026-04-22 |
 | **CR 结束** | 2026-04-22 |
 | **CR 范围** | PR1–PR5 全部（已在 main 落地） |
@@ -456,7 +456,7 @@ if (opts.logger) {
 
 ### 6.1 整体结论
 
-**✅ 通过 CR。** v0.6 迭代 PR1–PR5 全部与 [v0.6-mirror-hygiene.md](./v0.6-mirror-hygiene.md) Spec 对齐，代码实现忠实落地设计意图；3 处**正向偏差**（gitImpl 扩 3 方法 / PR3 纯函数抽离 / PR2 额外结构化日志）均在 spec §7 变更记录中追溯。
+**✅ 通过 CR。** v0.6 迭代 PR1–PR5 全部与 [Iteration5_MirrorHygiene.md](./Iteration5_MirrorHygiene.md) Spec 对齐，代码实现忠实落地设计意图；3 处**正向偏差**（gitImpl 扩 3 方法 / PR3 纯函数抽离 / PR2 额外结构化日志）均在 spec §7 变更记录中追溯。
 
 ### 6.2 发现清单汇总
 
@@ -476,14 +476,14 @@ if (opts.logger) {
 
 ### 6.4 Spec 文档状态处置
 
-CR 结束后，Spec `docs/version/v0.6-mirror-hygiene.md` 文档状态拟恢复为 "已完成 · PR1–PR5 全部落地"，并追加一行 "✅ CR 通过（2026-04-22，见 [v0.6-mirror-hygiene_CR.md](./v0.6-mirror-hygiene_CR.md)）"。
+CR 结束后，Spec `docs/version/Iteration5_MirrorHygiene.md` 文档状态拟恢复为 "已完成 · PR1–PR5 全部落地"，并追加一行 "✅ CR 通过（2026-04-22，见 [Iteration5_MirrorHygiene_CR.md](./Iteration5_MirrorHygiene_CR.md)）"。
 
 ### 6.5 审查范围约束确认
 
 | 约束 | 执行情况 |
 |------|---------|
 | 代码只读，不改实现 | ✅ |
-| 文档只改 Spec 状态头 | ✅（仅改 v0.6-mirror-hygiene.md 文档状态行，其他文档未动） |
+| 文档只改 Spec 状态头 | ✅（仅改 Iteration5_MirrorHygiene.md 文档状态行，其他文档未动） |
 | 结论基于证据 | ✅（每条结论附锚点） |
 | 实质性不一致不打哈哈 | ✅（DI 扩 3 方法 / 纯函数抽离均标注为"正向偏差"并论证，未一笔带过） |
 | 根因性阻塞 → 后续 phase 停 | 无阻塞 |

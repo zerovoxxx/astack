@@ -1,6 +1,6 @@
 # Iteration 0.7 — Local Skills as First-Class Citizens — Spec Review
 
-> 评审对象：`docs/version/v0.7-local-skills.md`（Spec v1, 498 行）
+> 评审对象：`docs/version/Iteration6_LocalSkills.md`（Spec v1, 498 行）
 > 评审时间：2026-04-22
 > 评审输入：活跃黄金法则 R1–R7、活跃反模式 P1–P7、AGENTS.md、INDEX.md、BOUNDARIES.md、相关源码
 > 结论先行：**条件性通过（需在进入 PR1 之前修复 2 处 P0 事实错误 + 3 处 P1 契约歧义）**
@@ -341,6 +341,6 @@
 
 ---
 
-*报告归档：`docs/version/v0.7-local-skills_REVIEW.md`*
+*报告归档：`docs/version/Iteration6_LocalSkills_REVIEW.md`*
 *评审基线：`docs/retro/golden-rules.md` R1–R7 + `docs/retro/patterns.md` P1–P7*
 *下一步：Spec 作者修 P0 + P1 → Spec 升级 v1.1 → PR1 启动*

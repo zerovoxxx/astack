@@ -2,7 +2,7 @@
  * LocalSkillService — v0.7.
  *
  * Owns the lifecycle of project-local skills tracked without an upstream
- * repo. See docs/version/v0.7-local-skills.md §A1 / §1.5.
+ * repo. See docs/version/Iteration6_LocalSkills.md §A1 / §1.5.
  *
  * Responsibilities:
  *   - `list(projectId)`  : read DB + apply lightweight fs probe for drift

@@ -34,7 +34,7 @@ export interface ServiceContainer {
   systemSkillService: SystemSkillService;
   /** v0.5 — see spec §3 / PR3. */
   projectBootstrapService: ProjectBootstrapService;
-  /** v0.7 — LocalSkill domain (see docs/version/v0.7-local-skills.md §1.5). */
+  /** v0.7 — LocalSkill domain (see docs/version/Iteration6_LocalSkills.md §1.5). */
   localSkillService: LocalSkillService;
   /**
    * Auto-appends `.astack/` and `.astack.json` to the project root

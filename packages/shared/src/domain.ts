@@ -613,7 +613,7 @@ export interface ApplyResolutionsResult {
 }
 
 // ============================================================
-// Local skills (v0.7) — see docs/version/v0.7-local-skills.md
+// Local skills (v0.7) — see docs/version/Iteration6_LocalSkills.md
 // ============================================================
 
 /**
