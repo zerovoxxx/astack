@@ -15,9 +15,12 @@
  *     (SUBSCRIPTION_NAME_COLLISION).
  */
 
+import path from "node:path";
+
 import {
   AstackError,
   ErrorCode,
+  SkillType,
   type Skill,
   type SkillRepo,
   type SkillType as SkillTypeT,
@@ -29,6 +32,7 @@ import { RepoRepository } from "../db/repos.js";
 import { SkillRepository } from "../db/skills.js";
 import { SubscriptionRepository } from "../db/subscriptions.js";
 import type { EventBus } from "../events.js";
+import { isDir, isFile, removeDir, removeFile } from "../fs-util.js";
 import type { Logger } from "../logger.js";
 import {
   dedupeSubscriptions,
@@ -316,14 +320,87 @@ export class SubscriptionService {
   }
 
   /**
-   * Remove a subscription. Returns true if a row was deleted.
-   * Manifest rewritten if a subscription actually went away.
+   * Remove a subscription. Returns `{ deleted, file_removed }`:
+   *   - `deleted`:       true when a SQLite row was deleted.
+   *   - `file_removed`:  true when the canonical working-copy file (or
+   *                      directory) was actually removed from the project's
+   *                      primary-tool tree. Stays false when the subscription
+   *                      row never existed, when nothing was on disk yet
+   *                      (sync_now=false subscribe was never followed by a
+   *                      sync), or when the caller opted out via
+   *                      `opts.remove_file === false`.
+   *
+   * Pre-v0.12: this method only dropped the DB row and rewrote the manifest,
+   * leaving the working copy (`<project>/<primary_tool>/skills/<name>/`
+   * or `commands/<name>.md` / `agents/<name>.md`) orphaned on disk. The
+   * UI looked like unsubscribe "half-worked": the row disappeared, but the
+   * next bootstrap scan re-surfaced the same skill as a LocalSkill
+   * (auto-adopted) and the files were still polluting the user's
+   * `.claude/`. The `UnsubscribeResponse.file_removed` field had been
+   * reserved in the schema since v0.3 but was always hard-coded to
+   * `false`. This method now honours that contract.
+   *
+   * Symmetric to `LocalSkillService.unadopt` with `delete_files: true`:
+   * if the filesystem delete fails we do NOT drop the DB row, otherwise
+   * the UI would report "unsubscribed" while the file silently survives.
+   *
+   * Manifest is rewritten iff a subscription actually went away.
    */
-  unsubscribe(projectId: number, skillId: number): boolean {
+  unsubscribe(
+    projectId: number,
+    skillId: number,
+    opts: { remove_file?: boolean } = {}
+  ): { deleted: boolean; file_removed: boolean } {
     const project = this.deps.projects.mustFindById(projectId);
+
+    // Capture the Skill row BEFORE deleting the subscription — once the
+    // row is gone we still have `skills` to consult, but resolving the
+    // canonical working path needs (type, name) which we want to pin
+    // down atomically.
+    const skill = this.skills.findById(skillId);
+
+    const removeFileRequested = opts.remove_file !== false;
+
+    // Best-effort file removal FIRST. We do this before the DB delete
+    // so a filesystem failure leaves the world consistent: the user can
+    // retry unsubscribe and still see the row + file together.
+    let fileRemoved = false;
+    if (removeFileRequested && skill) {
+      const relPath = canonicalWorkingRelPath(skill);
+      const abs = path.join(project.path, project.primary_tool, relPath);
+      try {
+        if (skill.type === SkillType.Skill) {
+          if (isDir(abs)) {
+            removeDir(abs);
+            fileRemoved = true;
+          }
+        } else {
+          if (isFile(abs)) {
+            removeFile(abs);
+            fileRemoved = true;
+          }
+        }
+      } catch (fsErr) {
+        // Mirror LocalSkillService.unadopt: surface a structured error
+        // rather than leaving a ghost subscription.
+        throw new AstackError(
+          ErrorCode.FILESYSTEM_FAILED,
+          `failed to remove working copy for ${skill.type}/${skill.name}`,
+          {
+            project_id: projectId,
+            skill_id: skillId,
+            type: skill.type,
+            name: skill.name,
+            path: abs,
+            error: fsErr instanceof Error ? fsErr.message : String(fsErr)
+          }
+        );
+      }
+    }
+
     const deleted = this.subs.deleteByProjectSkill(projectId, skillId);
     if (deleted) this.rewriteManifest(project.id);
-    return deleted;
+    return { deleted, file_removed: fileRemoved };
   }
 
   listForProject(projectId: number): Subscription[] {
@@ -473,5 +550,35 @@ export class SubscriptionService {
       });
     }
     return repo;
+  }
+}
+
+/**
+ * Relative path (from `<project>/<primary_tool>/`) where the working copy
+ * of a subscribed skill lives.
+ *
+ * Mirrors the canonical layout used by `SyncService.workingPath` (sync.ts:
+ * `canonicalWorkingRelPath`). Kept as a tiny duplicate in this module to
+ * avoid importing from sync.ts — SubscriptionService must not depend on
+ * SyncService (it's the other way around: sync/pull/push call subscription
+ * bookkeeping after materializing files).
+ *
+ * If you change the project layout convention, update BOTH locations AND
+ * `BOOTSTRAP_SCAN_CONFIG`. A mismatch here means "unsubscribe deletes
+ * the wrong path" — silent data inconsistency — so the duplication is a
+ * conscious trade against a circular import.
+ */
+function canonicalWorkingRelPath(skill: Skill): string {
+  switch (skill.type) {
+    case SkillType.Skill:
+      return path.posix.join("skills", skill.name);
+    case SkillType.Command:
+      return path.posix.join("commands", `${skill.name}.md`);
+    case SkillType.Agent:
+      return path.posix.join("agents", `${skill.name}.md`);
+    default: {
+      const _exhaustive: never = skill.type;
+      return _exhaustive;
+    }
   }
 }

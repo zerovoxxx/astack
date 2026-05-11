@@ -80,12 +80,28 @@ export function subscriptionsRoutes(c: ServiceContainer): Hono {
   );
 
   // DELETE /api/projects/:id/subscriptions/:skill_id — unsubscribe.
+  //
+  // v0.12: `file_removed` now reflects reality instead of being hard-coded
+  // to `false`. SubscriptionService.unsubscribe deletes the working-copy
+  // file/directory under `<project>/<primary_tool>/` before dropping the
+  // DB row. Pre-v0.12 the schema promised file removal but the
+  // implementation was a no-op; the response still shipped `false` which
+  // the Web UI happened to ignore, hiding the bug for months.
+  //
+  // Query `?keep_file=1` opts out of file deletion (escape hatch for
+  // power users who want to unsubscribe but keep the file around as a
+  // LocalSkill-to-be; the next bootstrap scan will adopt it). Omitted /
+  // any other value → delete file (default behaviour).
   app.delete(
     "/:id/subscriptions/:skill_id",
     zValidator("param", UnsubscribeParamsSchema),
     (ctx) => {
       const { id, skill_id } = ctx.req.valid("param");
-      const deleted = c.subscriptionService.unsubscribe(id, skill_id);
+      const keepFile = ctx.req.query("keep_file") === "1";
+      const { deleted, file_removed } =
+        c.subscriptionService.unsubscribe(id, skill_id, {
+          remove_file: !keepFile
+        });
       if (!deleted) {
         throw new AstackError(
           ErrorCode.SUBSCRIPTION_NOT_FOUND,
@@ -95,7 +111,7 @@ export function subscriptionsRoutes(c: ServiceContainer): Hono {
       }
       const response: UnsubscribeResponse = {
         deleted: true,
-        file_removed: false
+        file_removed
       };
       return ctx.json(response);
     }

@@ -24,7 +24,7 @@ Spec 中任何"复用现有 X"的描述（SSE 事件类型、scanner 配置、Se
 - 引用 Service 方法 → 对照类定义，确认签名、返回类型、是否抛错
 - 引用表字段 → 对照 DB migration / 对应 Repository class 的 SELECT 列
 
-**反例：** "复用 `subscription.added` SSE 事件"（该事件不存在）、"`DEFAULT_SCAN_CONFIG` 涵盖 agents"（实际不含）
+**反例：** "复用 `subscription.added` SSE 事件"（该事件不存在）、"`DEFAULT_SCAN_CONFIG` 涵盖 agents"（实际不含）、v0.11-auto-sync §4.4 "加 migration 文件 `00XX_auto_sync_columns.sql`"（项目 `schema.ts` 注释明言 "no version table and no migration machinery"，与 v0.7 同型复刻）
 
 ---
 
@@ -70,6 +70,8 @@ Spec 中引用现有代码位置（如 "`sync.ts:471` 的 pull"）时，必须�
 - 批量引用时加一张锚点表（"所有 `git.pull` 调用点：`pullOne (sync.ts:177)` / `pushOne (sync.ts:471)` / `resolve (sync.ts:670)`"）
 
 **反例：** v0.6-mirror-hygiene §1.4 把 `sync.ts:471` 标注为 "`pullBatchUnderLock` 的内层 pull"；实际该行位于 `pushOne` 内部，`pullBatchUnderLock` 通过 `pullOne` 间接 pull。后续 `ensureMirrorClean` 会被插到错误函数，还会为 custom 仓库 push 流程的合法 commit+push 中间态引入误 reset
+
+**反例（变种 — 文件级位置错位）：** v0.11-auto-sync §0/§2.1/§4.7.1.3/§6.4 反复声称废弃 "Auto-sync on focus" localStorage 开关位于 `packages/web/src/pages/ReposPage.tsx`；实际位于 `packages/web/src/components/project/ProjectSettingsPanel.tsx (line 26-74)`，ReposPage 全文 grep 零命中。文件级错位比同文件行号错位更隐蔽 —— 实施者按 spec 在 ReposPage grep 找不到任何残留，会把"废开关已删除"当作 noop 跳过，真正的废开关保留下来。**升级要求**：spec 引用前端代码位置时，除"组件名 + 行号"外，还应在引用处加 `grep` 命令的预期命中数（如 `rg "auto_sync" packages/web/src → 3 hits in ProjectSettingsPanel.tsx`），让 reviewer 一眼就能复现验证
 
 ---
 

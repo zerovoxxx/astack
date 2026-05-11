@@ -6,6 +6,7 @@
 
 | 迭代 | 标题 | 状态 | 文档 | 创建日期 |
 |------|------|------|------|---------|
+| v0.11 | Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊 | 评审通过待实施；评审见 [_REVIEW](./Iteration10_AutoSync_REVIEW.md) | [Iteration10_AutoSync.md](./Iteration10_AutoSync.md) | 2026-05-11 |
 | v0.10 | Force Refresh：脏 open-source 镜像的显式 reset + pull 入口 | IMPLEMENTED（单次合并，待 E2E 补测） | [Iteration9_ForceRefresh.md](./Iteration9_ForceRefresh.md) | 2026-05-10 |
 | v0.9 | Repo 卡片 Refresh / Remove 按钮外显平铺 | SPEC（待实施） | [Iteration8_RepoActionsInline.md](./Iteration8_RepoActionsInline.md) | 2026-05-10 |
 | v0.8 | Auto-adopt Reflow（后加 repo 能重分类已兜底 LocalSkill） | SHIPPED（单 PR） | [Iteration7_BootstrapReflow.md](./Iteration7_BootstrapReflow.md) | 2026-04-23 |

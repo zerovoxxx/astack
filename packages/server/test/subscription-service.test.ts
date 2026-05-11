@@ -212,20 +212,89 @@ describe("SubscriptionService", () => {
     it("unsubscribe removes the row and rewrites manifest", async () => {
       const { projectId, skillIdCommand } = await seed();
       h.subscriptionService.subscribe(projectId, "code_review");
-      const removed = h.subscriptionService.unsubscribe(
+      const result = h.subscriptionService.unsubscribe(
         projectId,
         skillIdCommand
       );
-      expect(removed).toBe(true);
+      expect(result.deleted).toBe(true);
       const manifest = readManifest(h.projectDir.path);
       expect(manifest!.subscriptions).toEqual([]);
     });
 
-    it("unsubscribe on missing row returns false (no manifest write)", async () => {
+    it("unsubscribe deletes the working-copy file and reports file_removed=true", async () => {
+      const { projectId, skillIdCommand, skillIdSkill } = await seed();
+      // Subscribe + sync so the working copies actually exist.
+      h.subscriptionService.subscribe(projectId, "code_review");
+      h.subscriptionService.subscribe(projectId, "office-hours");
+      await h.syncService.pullBatch(projectId, {});
+
+      const cmdPath = path.join(
+        h.projectDir.path,
+        ".claude",
+        "commands",
+        "code_review.md"
+      );
+      const skillDir = path.join(
+        h.projectDir.path,
+        ".claude",
+        "skills",
+        "office-hours"
+      );
+      expect(fs.existsSync(cmdPath)).toBe(true);
+      expect(fs.existsSync(skillDir)).toBe(true);
+
+      const cmdRes = h.subscriptionService.unsubscribe(
+        projectId,
+        skillIdCommand
+      );
+      expect(cmdRes).toEqual({ deleted: true, file_removed: true });
+      expect(fs.existsSync(cmdPath)).toBe(false);
+
+      const skillRes = h.subscriptionService.unsubscribe(
+        projectId,
+        skillIdSkill
+      );
+      expect(skillRes).toEqual({ deleted: true, file_removed: true });
+      expect(fs.existsSync(skillDir)).toBe(false);
+    });
+
+    it("unsubscribe with remove_file=false keeps the working-copy file on disk", async () => {
+      const { projectId, skillIdCommand } = await seed();
+      h.subscriptionService.subscribe(projectId, "code_review");
+      await h.syncService.pullBatch(projectId, {});
+      const cmdPath = path.join(
+        h.projectDir.path,
+        ".claude",
+        "commands",
+        "code_review.md"
+      );
+      expect(fs.existsSync(cmdPath)).toBe(true);
+
+      const res = h.subscriptionService.unsubscribe(
+        projectId,
+        skillIdCommand,
+        { remove_file: false }
+      );
+      expect(res).toEqual({ deleted: true, file_removed: false });
+      expect(fs.existsSync(cmdPath)).toBe(true);
+    });
+
+    it("unsubscribe reports file_removed=false when the working copy never materialized", async () => {
+      const { projectId, skillIdCommand } = await seed();
+      // Subscribe but skip sync → no working copy on disk.
+      h.subscriptionService.subscribe(projectId, "code_review");
+      const res = h.subscriptionService.unsubscribe(
+        projectId,
+        skillIdCommand
+      );
+      expect(res).toEqual({ deleted: true, file_removed: false });
+    });
+
+    it("unsubscribe on missing row returns deleted=false (no manifest write)", async () => {
       const { projectId } = await seed();
       // Manifest doesn't exist yet.
-      const removed = h.subscriptionService.unsubscribe(projectId, 9999);
-      expect(removed).toBe(false);
+      const res = h.subscriptionService.unsubscribe(projectId, 9999);
+      expect(res).toEqual({ deleted: false, file_removed: false });
     });
 
     it("rejects subscription that would collide with another repo's same-name skill", async () => {

@@ -22,6 +22,7 @@
 - v0.7-local-skills spec §1.3 / §7 / §8 声称 "独立迁移文件 `0007_local_skills.ts`（沿用 v0.2 的 migration 模式）" + "migration 幂等 + 单测强制 up/down 回归" —— 实际 `packages/server/src/db/connection.ts:17-19` 与 `schema.ts:6` 注释明言 "single `SCHEMA_DDL` constant. No version table, no migration machinery"，`db/` 目录下无任何 `0001_*.ts`~`0006_*.ts`，全仓 grep `"0007"` 0 命中；项目实际用 `CREATE TABLE IF NOT EXISTS` 叠加 + 幂等 DDL，无 up/down 语义可测。Spec 作者凭对"典型 Web 项目 migration 模式"的印象编写，未对照 `connection.ts` 实际机制
 - v0.7-local-skills spec §A5 引用 `packages/server/src/fs-hash.ts::hashDir / hashFile` —— 实际文件为 `packages/server/src/fs-util.ts`（`fs-hash.ts` 全仓 0 命中）
 - v0.7-local-skills spec §A4 / §17 UI tab 顺序含 `Linked Dirs` —— `ProjectDetailPage.tsx` 实际 `TAB_IDS = ['subscriptions', 'tools', 'history', 'harness', 'settings']`，无独立的 linked-dirs tab
+- v0.11-auto-sync spec §4.4 "加 migration 文件 `packages/server/src/db/migrations/00XX_auto_sync_columns.sql`（编号跟现有规则）" —— 实际 `packages/server/src/db/schema.ts` 注释明言 "Single-source schema DDL (no version table and no migration machinery)"，**与 v0.7 同型复刻第二次**。表明 R1 的 grep 验证纪律仍未稳定下沉到 spec 起草环节。**强化要求**：spec 起草时凡涉及 DB schema 改动的段落，必须先 `grep -i "migration\|alter\|ddl" packages/server/src/db/` 并把结果（哪怕只是 schema.ts 的一行注释）粘贴到 spec 的"现状勘察"小段，再写 spec 的设计
 
 **关联黄金法则：** R1
 
@@ -105,6 +106,8 @@
 
 **案例：**
 - v0.6-mirror-hygiene §1.4 把 `sync.ts:471` 标注为 "`pullBatchUnderLock` 的内层 pull"；实际 `sync.ts:322–431` 的 `pullBatchUnderLock` 不直接调 `git.pull`，而是通过 `pullOne`（line 359 → 177）间接调用；`sync.ts:471` 真实位于 `pushOne`（line 443 开始）内部，是 push 前对 upstream 的刷新
+
+**变种（文件级位置错位）：** v0.11-auto-sync spec §0/§2.1/§4.7.1.3/§6.4 反复把废弃 "Auto-sync on focus" localStorage 开关定位为 `packages/web/src/pages/ReposPage.tsx`；实际位于 `packages/web/src/components/project/ProjectSettingsPanel.tsx (line 26-74)`，ReposPage 全文 grep `auto_sync` 零命中。这是 P5 的**文件级**变种 —— 不仅行号会错位，整个文件定位也会错位。后果比同文件行号错位更隐蔽：实施者按 spec 在错误文件找不到任何残留，会把"废开关已删除"当作 noop 跳过，真正的废开关保留下来，spec 目标"删除废弃开关"无法兑现但 reviewer 看不出
 
 **关联黄金法则：** R5
 

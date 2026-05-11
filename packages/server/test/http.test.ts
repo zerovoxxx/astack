@@ -410,6 +410,111 @@ describe("HTTP API", () => {
       expect(res.status).toBe(404);
       expect(res.json.code).toBe(ErrorCode.SUBSCRIPTION_NOT_FOUND);
     });
+
+    it("deletes the working copy file and reports file_removed=true", async () => {
+      await bare.addCommitPush("commands/code_review.md", "v1\n", "init");
+      await bare.addCommitPush(
+        "skills/office-hours/SKILL.md",
+        "# office hours\n",
+        "add skill"
+      );
+      await request(app, "POST", "/api/repos", { git_url: bare.url });
+      const proj = await request<{ project: { id: number } }>(
+        app,
+        "POST",
+        "/api/projects",
+        { path: projectDir.path }
+      );
+      const sub = await request<{ subscriptions: Array<{ skill_id: number }> }>(
+        app,
+        "POST",
+        `/api/projects/${proj.json.project.id}/subscriptions`,
+        { skills: ["code_review", "office-hours"], sync_now: true }
+      );
+      expect(sub.status).toBe(201);
+
+      // Resolve (skill_id → type) via the status view so we don't depend
+      // on subscribe() returning a full Skill (it only returns Subscription).
+      const status = await request<{
+        subscriptions: Array<{ skill: { id: number; type: string; name: string } }>;
+      }>(app, "GET", `/api/projects/${proj.json.project.id}/status`);
+      const cmd = status.json.subscriptions.find(
+        (s) => s.skill.type === SkillType.Command
+      )!;
+      const skl = status.json.subscriptions.find(
+        (s) => s.skill.type === SkillType.Skill
+      )!;
+
+      const cmdPath = path.join(
+        projectDir.path,
+        ".claude",
+        "commands",
+        "code_review.md"
+      );
+      const skillDir = path.join(
+        projectDir.path,
+        ".claude",
+        "skills",
+        "office-hours"
+      );
+      expect(fs.existsSync(cmdPath)).toBe(true);
+      expect(fs.existsSync(skillDir)).toBe(true);
+
+      const delCmd = await request<{ deleted: boolean; file_removed: boolean }>(
+        app,
+        "DELETE",
+        `/api/projects/${proj.json.project.id}/subscriptions/${cmd.skill.id}`
+      );
+      expect(delCmd.status).toBe(200);
+      expect(delCmd.json).toEqual({ deleted: true, file_removed: true });
+      expect(fs.existsSync(cmdPath)).toBe(false);
+
+      const delSkill = await request<{ deleted: boolean; file_removed: boolean }>(
+        app,
+        "DELETE",
+        `/api/projects/${proj.json.project.id}/subscriptions/${skl.skill.id}`
+      );
+      expect(delSkill.status).toBe(200);
+      expect(delSkill.json).toEqual({ deleted: true, file_removed: true });
+      expect(fs.existsSync(skillDir)).toBe(false);
+
+      void sub;
+    });
+
+    it("?keep_file=1 opts out of file removal", async () => {
+      await bare.addCommitPush("commands/code_review.md", "v1\n", "init");
+      await request(app, "POST", "/api/repos", { git_url: bare.url });
+      const proj = await request<{ project: { id: number } }>(
+        app,
+        "POST",
+        "/api/projects",
+        { path: projectDir.path }
+      );
+      const sub = await request<{
+        subscriptions: Array<{ skill_id: number }>;
+      }>(app, "POST", `/api/projects/${proj.json.project.id}/subscriptions`, {
+        skills: ["code_review"],
+        sync_now: true
+      });
+      const cmdPath = path.join(
+        projectDir.path,
+        ".claude",
+        "commands",
+        "code_review.md"
+      );
+      expect(fs.existsSync(cmdPath)).toBe(true);
+
+      const skillId = sub.json.subscriptions[0]!.skill_id;
+      const res = await request<{ deleted: boolean; file_removed: boolean }>(
+        app,
+        "DELETE",
+        `/api/projects/${proj.json.project.id}/subscriptions/${skillId}?keep_file=1`
+      );
+      expect(res.status).toBe(200);
+      expect(res.json).toEqual({ deleted: true, file_removed: false });
+      // File survives.
+      expect(fs.existsSync(cmdPath)).toBe(true);
+    });
   });
 
   // v0.3 PR4 — batch subscribe partial-success contract

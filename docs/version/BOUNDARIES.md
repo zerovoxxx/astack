@@ -5,6 +5,45 @@
 >
 > **文件命名规范**：迭代文档统一 slug `Iteration<N>_<PascalSlug>`（harness-init 规范，`<N>` 从 1 开始的整数序号），spec 正文无后缀，评审用 `_REVIEW.md`，代码评审用 `_CR.md`，专项报告用 `_SPIKE.md` / `_POSTMORTEM.md` 等。详见 [`AGENTS.md §4.1`](../../AGENTS.md#41-docsversion-文件命名规范)。
 
+## v0.11 — Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊
+
+**本迭代做：**
+- `packages/server/src/services/auto-sync.ts`：新 `AutoSyncService`（`start / stop / runCycle / syncOne`），daemon while-sleep + AbortController 循环（~1h interval + ±5min jitter + 60s 冷启动延迟），instance 级 `inflight` 防重入（命中即 `auto_sync.cycle_skipped` warn 一行，不写 DB / 不发 attention 事件 / 不发 cycle_completed），新 `repoAutoSyncLockKey(repoId)` per-repo 锁
+- `packages/server/src/git.ts` 新 primitive：`gitFetch` / `gitStatusWithAhead` / `gitPullFfOnly` / `gitCommitAll` / `gitPush` / `gitGetLocalIdentity`（读 `git config --local user.name/email`，不读 `--global`） / `classifyGitError`（与既有 `gitPull` / `gitCommitAndPush` 并存不改）
+- `AutoSyncService.syncOne` 四象限决策：open-source+clean→pullFfOnly、open-source+dirty→skip、custom(clean,0,0)→noop、custom(clean,0,>0)→pullFfOnly、custom(clean,>0,0)→push、custom(clean,>0,>0)→needs_attention("divergent_branches")、custom(dirty,*,0)→commitAll+push、custom(dirty,*,>0)→needs_attention("dirty_and_behind")；**任何 needs_attention 分支绝不自动 merge/rebase/force-push/stash pop/reset**
+- `packages/server/src/daemon.ts::startDaemon` 挂 `autoSyncService.start()`，`DaemonHandle.close()` 前 `await autoSyncService.stop()`（在 `server.close()` 之前）
+- DB schema 改动（**项目无 migration 框架**，走 `schema.ts::SCHEMA_DDL` + `db/connection.ts::initDb` 内幂等 ALTER TABLE 双路径）：`skill_repos` 加 `last_auto_sync_at` / `last_auto_sync_status` / `last_auto_sync_reason` / `last_auto_sync_detail` 4 列（不复用 `last_synced`，保持镜像新鲜度语义）
+- `packages/shared/src/schemas/events.ts`：新 `RepoAutoSyncAttentionPayloadSchema`（`reason` 枚举含 `dirty_working_tree` / `pull_not_fast_forward` / `push_rejected` / `divergent_branches` / `dirty_and_behind` / `fetch_failed` / `commit_failed`）+ `EventType.RepoAutoSyncAttention`；新 `RepoAutoSyncCycleCompletedPayloadSchema`（aggregate 计数：`cycle_id` / `started_at` / `duration_ms` / `repos_total` / `ok` / `noop` / `skipped` / `needs_attention`，**不含 per-repo 列表**）+ `EventType.RepoAutoSyncCycleCompleted`
+- `packages/shared/src/schemas/repos.ts::RefreshRepoResponseSchema.skipped_reason` enum 扩 `"auto_sync_in_progress"`（非 breaking additive，用于 §A3 try-acquire 锁路径，与 v0.10 已有的 `"dirty_working_tree"` 并列）；新 `DismissAutoSyncAttentionRequest/Response` / `GetAutoSyncConfigResponse` / `UpdateAutoSyncConfigRequest`
+- `packages/server/src/services/repo.ts::refresh` 开头 try-acquire `repoAutoSyncLockKey`，AutoSync 在跑时直接返回 `skipped_reason:"auto_sync_in_progress"`
+- `packages/server/src/http/routes.repos.ts::POST /:id/dismiss-auto-sync-attention`：清 4 列 auto-sync 状态、保留 `last_auto_sync_at` 作为最后尝试时间
+- `packages/server/src/http/routes.auto-sync.ts`（新）：`GET /api/auto-sync/config` + `POST /api/auto-sync/config`，POST 写 `~/.astack/config.json`，env > config.json > default 优先级，response 诚实反映 `source`
+- `packages/server/src/config.ts::loadAutoSyncConfig`：读 `ASTACK_AUTOSYNC_ENABLED` / `ASTACK_AUTOSYNC_INTERVAL_MS` / `ASTACK_AUTOSYNC_JITTER_MS`
+- `packages/web/src/pages/ReposPage.tsx`：顶部新 `Switch` "Auto-sync (~1h)"（env 锁定时 readonly + tooltip）；`RepoCard` 展开区新 SyncStateSection，`needs_attention` 橙色 banner + Dismiss 按钮（点击 invalidate repos query）+ Resolve 按钮（仅 custom + divergent/dirty_and_behind；多项目订阅时弹 dropdown 选目标项目）或 "Open in terminal" 复制路径
+- `packages/web/src/components/project/ProjectSettingsPanel.tsx`：**删除废弃 `auto-sync-on-focus` localStorage 代码（line 26-74）** —— 注意位置在 ProjectSettingsPanel 不在 ReposPage
+- `packages/web/src/lib/api.ts`：`getAutoSyncConfig` / `updateAutoSyncConfig` / `dismissAutoSyncAttention` + `RepoAutoSyncAttentionEvent` / `RepoAutoSyncCycleCompletedEvent` 类型 + SSE invalidate 两个 query key
+- `gitCommitAll` 的 author 来自 `gitGetLocalIdentity(localPath)`（读 `git config --local user.name/email`），local 未设 → `commit_failed + detail "no_local_git_identity"` 进 needs-attention（不回落 global，避免跨 repo 身份污染）；AutoSync **不**复用 `app.ts::gitAuthor` 全局 DI
+- daemon 启动时 export `GIT_TERMINAL_PROMPT=0`，阻止鉴权交互挂起（fetch 鉴权失败 → `fetch_failed + detail "authentication"`）
+- 测试：T1 / T1.5 / T2 / T3 / T3.5 / T4–T12 后端单测（生命周期 / 四象限 / 鉴权分类 / 锁竞态 / no_local_git_identity）+ T13–T15 HTTP 单测（含 env 锁定下 POST 不触发 start/stop）+ T16–T17 E2E（switch toggle + needs_attention banner + Dismiss）
+- 按 4 个 PR 切分（PR1 后端核心 + 后端 schema 原子 / PR2 HTTP 路由 + HTTP-only schema / PR3 前端 + 删 ProjectSettingsPanel 废开关 / PR4 文档 — **不**包含 spec-lint 正则修复）
+
+**本迭代不做（延后到 v0.12+）：**
+- CLI 命令（`astack auto-sync start/stop/status`）—— CLI 一致性统一迭代
+- 智能 rebase / 3-way merge 自动化 —— divergent / dirty+behind 一律 needs-attention
+- per-repo 独立间隔 / 独立开关 —— 全局一个间隔、全局一个开关足够
+- "Sync all now" 手动按钮 —— 触发源聚合复杂度高，用户可点每卡片 Refresh 或等 cycle
+- 复用 `RepoService.refresh` / `SyncService.syncProject`（§A1：独立服务直调 git primitive，保持日志 / SSE 事件隔离）
+- open-source repo 的自动 force reset —— 保持 v0.6 决策：open-source dirty 只由用户手动 Force pull（v0.10 路径）
+- post-commit / pre-push hook 绕过（`--no-verify`）—— 违 Git Safety Protocol
+- 自动 PR / upstream protected branch 自动处理 —— push rejected 进 needs-attention，用户手动处理
+- 退避重试 —— 失败直接进 needs-attention，下次 cycle 重试；简单 backoff 会混淆真错误
+- 外部状态文件 `.astack/auto-sync-state.json` —— 状态全部入库 SQLite + SSE 广播，单真相源
+- OAuth token 续签 / SSH key 管理 —— 鉴权失败等同 needs-attention
+- 把 auto-sync 接到既有 `sync.completed` / `repo.refreshed` SSE —— 独立事件类型避免每小时事件风暴
+- 并行跑多 repo cycle —— 串行可接受（10 repo ~5s），并行对 git CLI 并发行为 unspecified
+- 修复 spec-lint 正则与 AGENTS.md §4.1 命名规范的偏差（独立小迭代处理，本迭代 PR4 接受 spec-lint 报"命名规则"一条 ERROR）之外的脚本问题（bash 3.2 `declare -A` 不兼容）
+- 非 `.claude` primary_tool 的特殊处理 / Windows 路径兼容（沿用历史决策）
+
 ## v0.10 — Force Refresh：脏 open-source 镜像的显式 reset + pull 入口
 
 **本迭代做：**
