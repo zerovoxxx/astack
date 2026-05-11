@@ -82,6 +82,17 @@ export async function startDaemon(
 ): Promise<DaemonHandle> {
   ensureDataDir(config);
 
+  // v0.11 §6.1: stop any spawned `git` process from prompting for
+  // credentials on stdin. AutoSync runs detached from a TTY (and so
+  // does the manual-Refresh path on a dashboard click), so a missing
+  // credential helper would otherwise hang the cycle indefinitely
+  // waiting for input that will never come. Setting it once on the
+  // daemon process is sufficient because every git invocation
+  // inherits the env via simple-git's child_process.spawn.
+  if (process.env.GIT_TERMINAL_PROMPT === undefined) {
+    process.env.GIT_TERMINAL_PROMPT = "0";
+  }
+
   // Prevent a second daemon on the same port.
   if (await isPortInUse(config.host, config.port)) {
     throw new AstackError(
@@ -190,12 +201,28 @@ export async function startDaemon(
     }
   }
 
+  // v0.11: kick off AutoSync after every other startup task is
+  // wired. The service itself enforces the 60s cold-start delay
+  // before the first cycle, so calling start() here doesn't smash
+  // the network during boot. start() is a no-op when
+  // `autoSyncConfig.enabled === false` (logged at info level so
+  // operators see the disable in daemon.log).
+  app.container.autoSyncService.start();
+
   const handle: DaemonHandle = {
     config,
     app,
     server,
     logger,
     close: async () => {
+      // 0. v0.11: stop the AutoSync loop FIRST and await any in-flight
+      //    cycle. The service still owns per-repo locks while syncing,
+      //    so closing the DB underneath it would corrupt the row it's
+      //    persisting. AutoSyncService.stop() is idempotent and
+      //    resolves once the current cycle finishes (or immediately
+      //    if no cycle is running).
+      await app.container.autoSyncService.stop();
+
       // 1. Tell long-lived SSE handlers to bail out of their while loops.
       //    Without this, server.close() would wait indefinitely for the
       //    SSE response to finish (which only happens when the client

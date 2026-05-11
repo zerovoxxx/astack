@@ -19,10 +19,12 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 
 import type { ServerConfig } from "../config.js";
+import { loadAutoSyncConfig } from "../config.js";
 import { openDatabase, type Db } from "../db/connection.js";
 import { EventBus } from "../events.js";
 import { LockManager } from "../lock.js";
 import type { Logger } from "../logger.js";
+import { AutoSyncService } from "../services/auto-sync.js";
 import { GitignoreGuardService } from "../services/gitignore-guard.js";
 import { LocalSkillService } from "../services/local-skill.js";
 import { ProjectBootstrapService } from "../services/project-bootstrap.js";
@@ -157,7 +159,7 @@ export function createApp(opts: CreateAppOptions): AppInstance {
   // ProjectBootstrapService. Mirrors the `systemSkillServiceRef`
   // pattern above: we want a cycle-free constructor but still let
   // LocalSkillService.suggestFromUnmatched call into bootstrap.scan
-  // once everything is wired. See docs/version/Iteration6_LocalSkills.md §1.5.
+  // once everything is wired. See docs/version/Iteration6_LocalSkills_SPEC.md §1.5.
   const localSkillService = new LocalSkillService({
     db,
     events,
@@ -182,6 +184,19 @@ export function createApp(opts: CreateAppOptions): AppInstance {
     logger: opts.logger
   });
 
+  // v0.11: AutoSyncService is dormant until daemon.ts calls start().
+  // We resolve its config here (env > config.json > default per §A6)
+  // so the GET /api/auto-sync/config route in PR2 can return the
+  // effective values without re-reading the env at request time.
+  const autoSyncConfig = loadAutoSyncConfig(opts.config);
+  const autoSyncService = new AutoSyncService({
+    db,
+    config: autoSyncConfig,
+    events,
+    locks,
+    logger: opts.logger
+  });
+
   const container: ServiceContainer = {
     config: opts.config,
     db,
@@ -196,7 +211,8 @@ export function createApp(opts: CreateAppOptions): AppInstance {
     systemSkillService,
     projectBootstrapService,
     localSkillService,
-    gitignoreGuardService
+    gitignoreGuardService,
+    autoSyncService
   };
 
   const app = new Hono();

@@ -1,6 +1,6 @@
 # 📋 Spec 评审报告 — v0.6 Open-source 镜像卫生 + Resolve 路径自愈 + 日志落盘
 
-**文档**：`docs/version/Iteration5_MirrorHygiene.md`
+**文档**：`docs/version/Iteration5_MirrorHygiene_SPEC.md`
 **版本**：v0.6（DRAFT，评审中）
 **评审日期**：2026-04-22
 

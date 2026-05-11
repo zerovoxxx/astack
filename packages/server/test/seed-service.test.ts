@@ -384,6 +384,7 @@ describe("SeedService cleanup of stale local directories", () => {
       pidFile: path.join(dataDir.path, "daemon.pid"),
       logFile: path.join(dataDir.path, "daemon.log"),
       lockFile: path.join(dataDir.path, "daemon.lock"),
+      configFile: path.join(dataDir.path, "config.json"),
       upstreamCacheTtlMs: 5 * 60 * 1000,
       repoLockTimeoutMs: 5000
     };

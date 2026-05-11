@@ -10,6 +10,7 @@ import type { Db } from "../db/connection.js";
 import type { EventBus } from "../events.js";
 import type { LockManager } from "../lock.js";
 import type { Logger } from "../logger.js";
+import type { AutoSyncService } from "../services/auto-sync.js";
 import type { GitignoreGuardService } from "../services/gitignore-guard.js";
 import type { LocalSkillService } from "../services/local-skill.js";
 import type { ProjectBootstrapService } from "../services/project-bootstrap.js";
@@ -34,7 +35,7 @@ export interface ServiceContainer {
   systemSkillService: SystemSkillService;
   /** v0.5 — see spec §3 / PR3. */
   projectBootstrapService: ProjectBootstrapService;
-  /** v0.7 — LocalSkill domain (see docs/version/Iteration6_LocalSkills.md §1.5). */
+  /** v0.7 — LocalSkill domain (see docs/version/Iteration6_LocalSkills_SPEC.md §1.5). */
   localSkillService: LocalSkillService;
   /**
    * Auto-appends `.astack/` and `.astack.json` to the project root
@@ -43,4 +44,12 @@ export interface ServiceContainer {
    * for the process lifetime.
    */
   gitignoreGuardService: GitignoreGuardService;
+  /**
+   * v0.11 — Daemon-side periodic pull/push (see
+   * docs/version/Iteration10_AutoSync_SPEC.md). PR1 wires the service into
+   * the container so daemon.ts can call `start()`/`stop()` and PR2
+   * routes can read its config / trigger manual cycles. The service
+   * itself is dormant when `config.enabled === false`.
+   */
+  autoSyncService: AutoSyncService;
 }

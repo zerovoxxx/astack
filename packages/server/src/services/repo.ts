@@ -43,6 +43,7 @@ import {
   gitResetHard
 } from "../git.js";
 import type { LockManager } from "../lock.js";
+import { repoAutoSyncLockKey } from "../lock.js";
 import type { Logger } from "../logger.js";
 import { scanRepo } from "../scanner/index.js";
 import { isBuiltinSeedUrl } from "../seeds.js";
@@ -115,12 +116,18 @@ export interface RefreshOutput {
   /** True if HEAD moved during this refresh. */
   changed: boolean;
   /**
-   * Set to `"dirty_working_tree"` when a non-force refresh short-circuited
-   * because the open-source mirror had uncommitted changes
-   * (v0.10). Absent on both happy path and force-reset path.
+   * Set to one of:
+   *   - `"dirty_working_tree"` (v0.10): non-force refresh short-circuited
+   *     because the open-source mirror had uncommitted changes. Absent on
+   *     both happy path and force-reset path.
+   *   - `"auto_sync_in_progress"` (v0.11 §A3): the daemon's AutoSync loop
+   *     was already holding the per-repo auto-sync lock when refresh ran,
+   *     so refresh bowed out to avoid two concurrent git ops on the same
+   *     working tree. Caller should retry shortly (next AutoSync cycle
+   *     will release the lock).
    * Mutually exclusive with `reset_performed`.
    */
-  skipped_reason?: "dirty_working_tree";
+  skipped_reason?: "dirty_working_tree" | "auto_sync_in_progress";
   /**
    * Set to `true` when `opts.force === true` and the mirror was dirty
    * AND a `reset --hard origin/HEAD` was executed before the pull
@@ -304,6 +311,38 @@ export class RepoService {
   ): Promise<RefreshOutput> {
     const force = opts.force ?? false;
     const repo = this.mustFindById(repoId);
+
+    // v0.11 §A3: if AutoSyncService currently holds this repo's
+    // auto-sync lock, skip rather than queueing behind it. The two
+    // operations could in principle serialize via withLock(repoId),
+    // but doing so makes the UI stall (auto-sync can take many
+    // seconds on a slow `git push`) for what is effectively the
+    // same fetch+pull the user just clicked. Returning a fast skip
+    // with a clear reason is the better UX. We probe the lock
+    // *non-blockingly* and release it immediately — the actual
+    // serialization for this manual refresh is still owned by the
+    // numeric `withLock(repoId, ...)` below.
+    const autoSyncProbe = this.deps.locks.tryAcquire(
+      repoAutoSyncLockKey(repoId)
+    );
+    if (!autoSyncProbe) {
+      this.deps.logger.info("repo.refresh.skipped_auto_sync_in_progress", {
+        repo_id: repoId,
+        repo_name: repo.name
+      });
+      const skills = this.filterOutSystemSkills(this.skills.listByRepo(repoId));
+      this.deps.events.emit({
+        type: EventType.RepoRefreshed,
+        payload: { repo, changed: false }
+      });
+      return {
+        repo,
+        skills,
+        changed: false,
+        skipped_reason: "auto_sync_in_progress"
+      };
+    }
+    autoSyncProbe();
 
     return this.deps.locks.withLock(repoId, async () => {
       if (!repo.local_path) {

@@ -251,7 +251,43 @@ export interface SkillRepo {
   head_hash: CommitHash | null;
   /** Last successful pull time. [CACHE] */
   last_synced: IsoDateTime | null;
+  /**
+   * v0.11 auto-sync — outcome cache for the last AutoSyncService.syncOne
+   * attempt on this repo. Decoupled from `last_synced` (which is the
+   * mirror HEAD timestamp set by RepoService.refresh) so a no-op auto-sync
+   * cycle does not pollute the "synced X ago" intuition shown for the
+   * mirror itself. NULL on rows that predate v0.11 or that have not yet
+   * been touched by AutoSync.
+   */
+  last_auto_sync_at: number | null;
+  last_auto_sync_status: AutoSyncStatus | null;
+  last_auto_sync_reason: string | null;
+  last_auto_sync_detail: string | null;
   created_at: IsoDateTime;
+}
+
+/**
+ * Outcome category for one `AutoSyncService.syncOne` attempt (v0.11).
+ *
+ *  - `ok`              — git side-effect happened (pull or commit/push) and succeeded.
+ *  - `noop`            — clean tree, no ahead/behind divergence, nothing to do.
+ *  - `skipped`         — open-source mirror dirty (or other documented skip path).
+ *  - `needs_attention` — divergent / dirty+behind / push rejected / fetch failed
+ *                        / commit failed. The repo is parked safely; AutoSync
+ *                        never auto-resolves these. See spec v0.11 §4.3.
+ */
+export type AutoSyncStatus = "ok" | "noop" | "skipped" | "needs_attention";
+
+/**
+ * Per-repo auto-sync state cache (v0.11). All fields are nullable so
+ * legacy rows render correctly as "Never auto-synced" before the first
+ * AutoSync cycle has touched them.
+ */
+export interface AutoSyncState {
+  last_auto_sync_at: number | null;
+  last_auto_sync_status: AutoSyncStatus | null;
+  last_auto_sync_reason: string | null;
+  last_auto_sync_detail: string | null;
 }
 
 /**
@@ -613,7 +649,7 @@ export interface ApplyResolutionsResult {
 }
 
 // ============================================================
-// Local skills (v0.7) — see docs/version/Iteration6_LocalSkills.md
+// Local skills (v0.7) — see docs/version/Iteration6_LocalSkills_SPEC.md
 // ============================================================
 
 /**

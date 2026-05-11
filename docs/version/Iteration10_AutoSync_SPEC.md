@@ -1,6 +1,6 @@
 # v0.11 — Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊
 
-> **文档状态：评审通过待实施 · 2026-05-11**
+> **文档状态：已完成**
 >
 > 创建于 2026-05-11，分支 main · v1.0 → v1.1（据 `Iteration10_AutoSync_REVIEW.md` 修复 P0/P1/P2/IC）
 >

@@ -1,6 +1,6 @@
 # Iteration10 · AutoSync — Spec Review
 
-> **评审对象：** `docs/version/Iteration10_AutoSync.md` v1.0
+> **评审对象：** `docs/version/Iteration10_AutoSync_SPEC.md` v1.0
 >
 > **评审时间：** 2026-05-11
 >

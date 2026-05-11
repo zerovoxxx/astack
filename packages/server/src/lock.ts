@@ -116,6 +116,24 @@ export class LockManager {
     }
   }
 
+  /**
+   * Non-blocking acquire: returns the release function if the lock is
+   * free (and immediately marks it held), or `null` if it is contended.
+   * Never queues, never throws REPO_BUSY.
+   *
+   * Added in v0.11 (§A3) for AutoSyncService → manual-Refresh
+   * coordination: refresh probes this lock with `tryAcquire(repoId)`,
+   * and on `null` it returns `skipped_reason: "auto_sync_in_progress"`
+   * instead of racing on the same `.git` directory.
+   */
+  tryAcquire(key: LockKey): (() => void) | null {
+    const canonical = canonicalize(key);
+    const state = this.getOrCreate(canonical);
+    if (state.held) return null;
+    state.held = true;
+    return () => this.release(canonical);
+  }
+
   private release(canonical: string): void {
     const state = this.locks.get(canonical);
     if (!state) return;
@@ -155,4 +173,20 @@ export class LockManager {
  */
 export function projectBootstrapLockKey(projectId: number): string {
   return `project-bootstrap-${projectId}`;
+}
+
+/**
+ * Canonical lock key for v0.11 AutoSync per-repo serialization. Held
+ * by `AutoSyncService.syncOne` for the duration of one repo's cycle.
+ *
+ * Manual `RepoService.refresh` does a NON-blocking try-acquire on this
+ * key: if AutoSync currently holds it, refresh short-circuits with
+ * `skipped_reason: "auto_sync_in_progress"` (spec v0.11 §A3) instead of
+ * racing on the same `.git` directory. The numeric `repoId`-based key
+ * used by `RepoService.withLock(repoId, ...)` is intentionally a
+ * SEPARATE lock — refresh holds *that* one for the actual git ops while
+ * AutoSync holds *this* one as a coarse "owner" marker.
+ */
+export function repoAutoSyncLockKey(repoId: number): string {
+  return `auto-sync-repo-${repoId}`;
 }

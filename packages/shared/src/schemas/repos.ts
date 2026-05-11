@@ -106,20 +106,28 @@ export const RefreshRepoResponseSchema = z.object({
   /** True if HEAD moved during this refresh. */
   changed: z.boolean(),
   /**
-   * Present iff the refresh took a short-circuit path. Today only one
-   * value: `"dirty_working_tree"` for non-force refresh against a dirty
-   * open-source mirror (`RepoService.refresh` logged
-   * `repo.refresh.dirty_skip`). Absent means "a normal pull + scan
-   * happened or `force=true` successfully reset the mirror".
+   * Present iff the refresh took a short-circuit path. Possible values:
    *
-   * Web clients use this to show a warn-level toast that points users
-   * to the Force pull button instead of the misleading
-   * `Repo up to date` copy pre-v0.10 emitted.
+   *   - `"dirty_working_tree"` — non-force refresh against a dirty
+   *     open-source mirror (`RepoService.refresh` logged
+   *     `repo.refresh.dirty_skip`). Web shows a warn-level toast and
+   *     points users to Force pull.
+   *
+   *   - `"auto_sync_in_progress"` (v0.11) — the daemon's `AutoSyncService`
+   *     currently holds the per-repo auto-sync lock for this repo, so
+   *     manual refresh skipped to avoid concurrent git ops on the same
+   *     working tree. Web should toast "Auto-sync running, try again in
+   *     a moment" rather than the misleading `Repo up to date` copy.
+   *
+   * Absent means "a normal pull + scan happened or `force=true`
+   * successfully reset the mirror".
    *
    * Mutually exclusive with `reset_performed`: a skipped refresh never
    * reset, and a successful force-reset is not a skip.
    */
-  skipped_reason: z.enum(["dirty_working_tree"]).optional(),
+  skipped_reason: z
+    .enum(["dirty_working_tree", "auto_sync_in_progress"])
+    .optional(),
   /**
    * Present iff `force=true` triggered a `git reset --hard origin/HEAD`
    * before the pull (i.e. the mirror was dirty and the user explicitly

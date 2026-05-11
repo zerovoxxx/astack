@@ -127,7 +127,28 @@ export const EventType = {
    * Only one event type for the whole v0.7 feature (coarse-grained by
    * design, see spec §A8).
    */
-  LocalSkillsChanged: "local_skills.changed"
+  LocalSkillsChanged: "local_skills.changed",
+
+  /**
+   * Auto-sync (v0.11) — a single repo entered or transitioned its
+   * `needs_attention` state during one `AutoSyncService.syncOne` attempt.
+   *
+   * Per-repo, fired only when the repo's auto-sync status flips into
+   * `needs_attention` (or its reason changed). The Web ReposPage uses
+   * this to invalidate that single repo's query and show the orange
+   * "Needs attention" badge. Reasons map 1:1 to the failure modes
+   * documented in spec v0.11 §4.3 / §A4.
+   */
+  RepoAutoSyncAttention: "repo.auto_sync_attention",
+
+  /**
+   * Auto-sync (v0.11) — one full cycle of `AutoSyncService.runCycle`
+   * finished. Aggregate-only payload: per-repo details flow through
+   * `repo.auto_sync_attention` instead, to keep the SSE stream small.
+   * Web uses this to invalidate the entire repos query key and refetch
+   * the list once per cycle.
+   */
+  RepoAutoSyncCycleCompleted: "repo.auto_sync_cycle_completed"
 } as const;
 export type EventType = (typeof EventType)[keyof typeof EventType];
 
@@ -319,6 +340,60 @@ export const LocalSkillsChangedPayloadSchema = z.object({
   })
 });
 
+/**
+ * RepoAutoSyncAttention (v0.11): one repo's auto-sync attempt produced a
+ * `needs_attention` outcome. Web uses `repo_id` to invalidate that
+ * repo's query and render the orange badge with `reason` + optional
+ * `detail` text. Spec v0.11 §4.5.2 lists the canonical reason set;
+ * `commit_failed` is special-cased for the `no_local_git_identity` path
+ * (see §4.2 / risk #2).
+ */
+export const RepoAutoSyncAttentionPayloadSchema = z
+  .object({
+    repo_id: z.number().int().positive(),
+    repo_name: z.string().min(1),
+    repo_kind: z.enum(["custom", "open-source"]),
+    reason: z.enum([
+      "dirty_working_tree", // open-source only
+      "pull_not_fast_forward",
+      "push_rejected",
+      "divergent_branches",
+      "dirty_and_behind",
+      "fetch_failed",
+      "commit_failed" // custom dirty path, includes no_local_git_identity
+    ]),
+    detail: z.string().optional(),
+    occurred_at: z.number().int().nonnegative() // epoch ms
+  })
+  .strict();
+
+export type RepoAutoSyncAttentionPayload = z.infer<
+  typeof RepoAutoSyncAttentionPayloadSchema
+>;
+
+/**
+ * RepoAutoSyncCycleCompleted (v0.11): one full `AutoSyncService.runCycle`
+ * finished. Aggregate-only counters; per-repo details flow through
+ * `repo.auto_sync_attention`. `cycle_id` is a uuid v4 written into the
+ * matching daemon.log line so log + SSE can be correlated post-hoc.
+ */
+export const RepoAutoSyncCycleCompletedPayloadSchema = z
+  .object({
+    cycle_id: z.string().min(1),
+    started_at: z.number().int().nonnegative(),
+    duration_ms: z.number().int().nonnegative(),
+    repos_total: z.number().int().nonnegative(),
+    ok: z.number().int().nonnegative(),
+    noop: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    needs_attention: z.number().int().nonnegative()
+  })
+  .strict();
+
+export type RepoAutoSyncCycleCompletedPayload = z.infer<
+  typeof RepoAutoSyncCycleCompletedPayloadSchema
+>;
+
 // ---------- Discriminated union ----------
 
 /**
@@ -401,6 +476,14 @@ export const AstackEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal(EventType.LocalSkillsChanged),
     payload: LocalSkillsChangedPayloadSchema
+  }),
+  z.object({
+    type: z.literal(EventType.RepoAutoSyncAttention),
+    payload: RepoAutoSyncAttentionPayloadSchema
+  }),
+  z.object({
+    type: z.literal(EventType.RepoAutoSyncCycleCompleted),
+    payload: RepoAutoSyncCycleCompletedPayloadSchema
   })
 ]);
 export type AstackEvent = z.infer<typeof AstackEventSchema>;

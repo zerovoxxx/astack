@@ -133,6 +133,13 @@ export type Pagination = z.infer<typeof PaginationSchema>;
 
 // ---------- Entity schemas (for response validation) ----------
 
+export const AutoSyncStatusSchema = z.enum([
+  "ok",
+  "noop",
+  "skipped",
+  "needs_attention"
+]);
+
 export const SkillRepoSchema = z.object({
   id: IdSchema,
   name: NonEmptyStringSchema,
@@ -143,6 +150,19 @@ export const SkillRepoSchema = z.object({
   local_path: z.string().nullable(),
   head_hash: CommitHashSchema.nullable(),
   last_synced: IsoDateTimeSchema.nullable(),
+  /**
+   * v0.11 auto-sync state cache. All four fields nullable: rows that
+   * predate v0.11 or haven't been touched by AutoSync yet legitimately
+   * have no auto-sync outcome to report.
+   *
+   * `last_auto_sync_at` is epoch ms (DB column is INTEGER), not ISO8601,
+   * to avoid the "ISO with mfractional seconds" parsing tax on every
+   * cycle. Web layer formats with `new Date(ms)`.
+   */
+  last_auto_sync_at: z.number().int().nonnegative().nullable(),
+  last_auto_sync_status: AutoSyncStatusSchema.nullable(),
+  last_auto_sync_reason: z.string().nullable(),
+  last_auto_sync_detail: z.string().nullable(),
   created_at: IsoDateTimeSchema
 });
 

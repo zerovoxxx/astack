@@ -174,7 +174,46 @@ export function openDatabase(opts: OpenDbOptions): Db {
 
   if (opts.migrate !== false) {
     db.exec(SCHEMA_DDL);
+    applyAutoSyncColumnsV0_11(db);
   }
 
   return db;
+}
+
+/**
+ * Idempotent ALTER TABLE for the 4 auto-sync columns added to
+ * `skill_repos` in v0.11. Required because `CREATE TABLE IF NOT EXISTS`
+ * in `SCHEMA_DDL` is a no-op on tables that already exist (i.e. on every
+ * pre-v0.11 user's database). See spec
+ * `docs/version/Iteration10_AutoSync_SPEC.md` §4.4.2.
+ *
+ * SQLite ≥ 3.35 supports `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+ * but Node's bundled SQLite version is not pinned across LTS lines, so
+ * we use the conservative try/catch + "duplicate column" probe instead
+ * (matches the SQLite error string shape since at least 3.0).
+ *
+ * Note: the project does not use better-sqlite3 — `node:sqlite`'s
+ * `DatabaseSync.exec` re-throws the underlying SQLite error message
+ * verbatim, so the same string match works.
+ */
+function applyAutoSyncColumnsV0_11(db: Db): void {
+  const columns: ReadonlyArray<readonly [string, string]> = [
+    ["last_auto_sync_at", "INTEGER"],
+    ["last_auto_sync_status", "TEXT"],
+    ["last_auto_sync_reason", "TEXT"],
+    ["last_auto_sync_detail", "TEXT"]
+  ];
+  for (const [col, type] of columns) {
+    try {
+      db.exec(`ALTER TABLE skill_repos ADD COLUMN ${col} ${type}`);
+    } catch (e) {
+      // SQLite raises "duplicate column name: <col>" when the column
+      // already exists — that is the desired idempotent outcome. Any
+      // other error is a real problem and must propagate.
+      const msg = String(e instanceof Error ? e.message : e);
+      if (!msg.toLowerCase().includes("duplicate column")) {
+        throw e;
+      }
+    }
+  }
 }

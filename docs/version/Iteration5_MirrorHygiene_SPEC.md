@@ -2,9 +2,9 @@
 
 > **文档状态：已完成 · PR1–PR5 全部落地 · CR 通过（2026-04-22）**
 >
-> **CR 报告：** [Iteration5_MirrorHygiene_CR.md](./Iteration5_MirrorHygiene_CR.md) — 结论：✅ 通过；发现的唯一低级测试代码冗余 1-L1 已于 2026-04-22 修复（见 §7 变更记录 v0.6-cr-fix）；未新增 retro 沉淀，本迭代 PR5 已完成 R6/R7/P6/P7 沉淀。
+> **CR 结论：** ✅ 通过；发现的唯一低级测试代码冗余 1-L1 已于 2026-04-22 修复（见 §7 变更记录 v0.6-cr-fix）；未新增 retro 沉淀，本迭代 PR5 已完成 R6/R7/P6/P7 沉淀。（详细 CR 报告已随文档清理删除）
 >
-> **评审状态：已评审（P0/P1/P2 修复已应用，见 §7 变更记录；评审报告 [Iteration5_MirrorHygiene_REVIEW.md](./Iteration5_MirrorHygiene_REVIEW.md)）**
+> **评审状态：已评审（P0/P1/P2 修复已应用，见 §7 变更记录；评审报告 [Iteration5_MirrorHygiene_REVIEW.md](./review/Iteration5_MirrorHygiene_REVIEW.md)）**
 >
 > **实施进度：**
 > - ✅ **PR1（2026-04-22）**：`gitResetHard` + `SyncServiceDeps.gitImpl` 扩 `isClean?/remoteHead?/resetHard?` + `SyncService.ensureMirrorClean` + `pullOne:177` / `resolve:670` 两处插入 + `RepoMirrorReset` SSE 事件（EventType / Payload Schema / AstackEventSchema 并入原子合入）+ sync-service 测试 +6。`pnpm -C packages/server run test` 29 files / 345 tests 全绿。

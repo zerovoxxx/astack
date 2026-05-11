@@ -1,6 +1,6 @@
 # v0.5 Subscription Bootstrap — Spec 评审报告
 
-**文档**：`docs/version/Iteration4_SubscriptionBootstrap.md`
+**文档**：`docs/version/Iteration4_SubscriptionBootstrap_SPEC.md`
 **版本**：v1（评审中）
 **评审日期**：2026-04-21
 

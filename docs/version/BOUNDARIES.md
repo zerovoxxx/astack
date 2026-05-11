@@ -3,7 +3,7 @@
 > 每个迭代的范围边界，防止跨迭代的范围蔓延。由 `/spec` 命令自动维护。
 > spec_review 评审时作为迭代边界遵守（A3）的评审基准。
 >
-> **文件命名规范**：迭代文档统一 slug `Iteration<N>_<PascalSlug>`（harness-init 规范，`<N>` 从 1 开始的整数序号），spec 正文无后缀，评审用 `_REVIEW.md`，代码评审用 `_CR.md`，专项报告用 `_SPIKE.md` / `_POSTMORTEM.md` 等。详见 [`AGENTS.md §4.1`](../../AGENTS.md#41-docsversion-文件命名规范)。
+> **文件命名规范**：迭代文档统一 slug `Iteration<N>_<PascalSlug>`（harness-init 规范，`<N>` 从 1 开始的整数序号）；spec 正文以 `_SPEC.md` 结尾放在 `docs/version/`，评审 / 代码评审 / 专项报告（`_REVIEW.md` / `_CR.md` / `_SPIKE.md` / `_POSTMORTEM.md`）一律落 `docs/version/review/`，归档文件落 `docs/version/archive/`。详见 [`AGENTS.md §4.1`](../../AGENTS.md#41-docsversion-文件命名与目录规范)。
 
 ## v0.11 — Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊
 
@@ -252,4 +252,4 @@
 
 ## v0.2 — sqlite 换底 + 多仓库目录兼容
 
-已 SHIPPED，见 [Iteration1_SqliteAndMultiRepo.md](./Iteration1_SqliteAndMultiRepo.md) § 1。
+已 SHIPPED，见 [Iteration1_SqliteAndMultiRepo_SPEC.md](./Iteration1_SqliteAndMultiRepo_SPEC.md) § 1。

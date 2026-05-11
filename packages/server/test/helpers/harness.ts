@@ -62,6 +62,10 @@ export async function createHarness(): Promise<Harness> {
     pidFile: path.join(dataDir.path, "daemon.pid"),
     logFile: path.join(dataDir.path, "daemon.log"),
     lockFile: path.join(dataDir.path, "daemon.lock"),
+    // v0.11: pointed at a path inside the test tmp dir so tests never
+    // touch a real ~/.astack/config.json. The file does not need to
+    // exist — `loadAutoSyncConfig` treats missing file as "use defaults".
+    configFile: path.join(dataDir.path, "config.json"),
     upstreamCacheTtlMs: 5 * 60 * 1000,
     repoLockTimeoutMs: 5000
   };
