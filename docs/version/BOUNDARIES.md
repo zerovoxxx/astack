@@ -5,6 +5,33 @@
 >
 > **文件命名规范**：迭代文档统一 slug `Iteration<N>_<PascalSlug>`（harness-init 规范，`<N>` 从 1 开始的整数序号）；spec 正文以 `_SPEC.md` 结尾放在 `docs/version/`，评审 / 代码评审 / 专项报告（`_REVIEW.md` / `_CR.md` / `_SPIKE.md` / `_POSTMORTEM.md`）一律落 `docs/version/review/`，归档文件落 `docs/version/archive/`。详见 [`AGENTS.md §4.1`](../../AGENTS.md#41-docsversion-文件命名与目录规范)。
 
+## v0.12 — Plugin Marketplace 布局：扫描 `<root>/<plugin>/{skills,commands,agents}/` 二级容器
+
+**本迭代做：**
+- `packages/shared/src/domain.ts::ScanRootKind` 追加第 4 个枚举值 `PluginMarketplace = "plugin-marketplace"`；`ScanRoot.kind` JSDoc 同步追加该 kind 的语义说明；`DEFAULT_SCAN_CONFIG` / `BUILTIN_SEED_URLS` 不动
+- `packages/server/src/scanner/plugin-marketplace.ts`（新文件）：`scanPluginMarketplace(repoRoot, rootPath, out, warnings)`，对 `<rootPath>` 第一层每个含 `.claude-plugin/plugin.json` 的子目录 `<plugin>` 派发到 `scanSkillDirs(<rootPath>/<plugin>/skills, namePrefix=plugin)` + `scanFlatFiles(<rootPath>/<plugin>/commands, namePrefix=plugin, command)` + `scanFlatFiles(<rootPath>/<plugin>/agents, namePrefix=plugin, agent)`
+- `packages/server/src/scanner/skill-dirs.ts::scanSkillDirs` / `flat-files.ts::scanFlatFiles` 各扩第 N 个**可选**参数 `namePrefix?: string`（默认 ""），原 3 个调用方零改动；helper 内部把 `name = namePrefix ? `${namePrefix}/${entry}` : entry` 一次性产出 plugin-namespaced 名（§A1 复用契约 + §A4 注入而非外层加工）
+- `packages/server/src/scanner/index.ts::scanRepo` switch 新增第 4 个 case 派发到 `scanPluginMarketplace`；不动 dedup / blacklist 后段（v0.4 systemSkillIds 仍按裸 name 等值比对，§A6）
+- skill `name` 由 plugin-marketplace 模式产出时含单 `/` 分隔（如 `code-review/code-review`），全链路把 name 视作不透明 NonEmptyString（grep 验证：`SkillSchema` `common.ts:182` / `subscription.ts:163-191` / `manifest.ts` / `local-skill.ts:585` / `canonicalWorkingRelPath` `sync.ts:1281` 均无字符集约束 + `copyFile (fs-util.ts:122)` / `mirrorDir (fs-util.ts:178)` 已 `mkdirSync(recursive)` 兜底，§A1 路径自然成立）
+- skills 表 `UNIQUE(repo_id, type, name)` (`schema.ts:96`) 不动；plugin slug 编进 name 自然解决跨 plugin 同名冲突（§A1 替代加列方案）
+- `packages/shared/src/schemas/repos.ts::RegisterRepoRequestSchema` 不动，`scan_config: ScanConfigSchema.nullish()` 透传任意 layout
+- `packages/cli/src/commands/repos.ts::runReposRegister` opts 扩 `scanConfigJson?: string`：`JSON.parse` + `ScanConfigSchema.parse` 双层校验（解析失败 → `VALIDATION_FAILED`），透传到 `client.registerRepo({...,scan_config})`；`packages/cli/src/bin.ts` reposCmd register 子命令 `.option("--scan-config-json <json>", ...)` + 透传
+- 测试：T1–T8 后端 scanner 单测（happy path / 无 plugin.json 跳过 / 空 plugin / 跨 plugin 同名两条都进 / frontmatter 不比对前缀 / NAME_REGEX 拦截非法 plugin slug / dotdir 静默 skip / systemSkillIds 不剥前缀比对）+ T9–T11 CLI 单测（合法 JSON 透传 / JSON 解析失败 / Zod 校验失败均报 `VALIDATION_FAILED`）
+- 文档：AGENTS.md "当前活跃迭代" 切换 + INDEX.md 加 v0.12 行（物理序号 11）+ 本 spec 表 SHIPPED 后 `/retro` 走查决定候选黄金法则 R9（"Scanner kind 抽象的扩张必须以新 helper 文件落地"）是否进活跃规则
+- 按 3 个 PR 切分（PR1 shared 域 + scanner 三文件原子 + 后端单测 / PR2 CLI option 透传 + CLI 单测 / PR3 文档 + retro）
+
+**本迭代不做（延后到 v0.13+）：**
+- **不**预置 `claude-plugins-official` 为 builtin seed（`seeds.ts:1-25` 注释明示每个 seed 都是有意决策；marketplace 含 50 个第三方 plugin，分发风险非零，等独立调研）
+- **不**做 Web UI 的 ScanConfig 编辑器 / "切换 layout 类型" 选择器（牵涉 RepoCard 展开区改造 + ScanConfig editor 组件 + SSE 重 scan，独立 UX 迭代）
+- **不**引入 `recurse_depth` / `glob` 等通用递归参数（方案 C；语义模糊，下次新 layout 仍抽不出明确语义；显式 marketplace kind 是有意设计）
+- **不**改 `name` 字符集校验为允许单 `/`（scanner 内部生成已合规，外部 NAME_REGEX 0 拦截点；用户手填 / API 传含 `/` 的 skill_name 仍非法）
+- **不**做 plugin-level `version` / `description` 解析（plugin.json 仅作存在性凭证）
+- **不**做 marketplace 模式下 `.mcp.json` 解析（MCP 全栈 0 支持，独立迭代）
+- **不**做 web UI "按 plugin 分组展示 skills" 的 UX 增强（先 raw name 直显）
+- **不**为 v0.2 三 kind 加迁移（现存 3 个 builtin seeds 完全不变）
+- **不**允许 namePrefix 嵌套 / 多段（helper invariant assert：namePrefix 通过 NAME_REGEX 或为空，含 `/` 直接 throw）
+- **不**复用 `BOOTSTRAP_SCAN_CONFIG`（项目 `.claude/` 不会有 marketplace 结构，bootstrap 路径与 marketplace 正交）
+
 ## v0.11 — Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊
 
 **本迭代做：**

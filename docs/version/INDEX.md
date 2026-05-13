@@ -6,6 +6,7 @@
 
 | 迭代 | 标题 | 状态 | 文档 | 创建日期 |
 |------|------|------|------|---------|
+| v0.12 | Plugin Marketplace 布局：扫描 `<root>/<plugin>/{skills,commands,agents}/` 二级容器 | IMPLEMENTED（PR1–PR3 已落地） | [Iteration11_PluginMarketplaceLayout_SPEC.md](./Iteration11_PluginMarketplaceLayout_SPEC.md) | 2026-05-13 |
 | v0.11 | Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊 | SHIPPED；评审见 [_REVIEW](./review/Iteration10_AutoSync_REVIEW.md) | [Iteration10_AutoSync_SPEC.md](./Iteration10_AutoSync_SPEC.md) | 2026-05-11 |
 | v0.10 | Force Refresh：脏 open-source 镜像的显式 reset + pull 入口 | IMPLEMENTED（单次合并，待 E2E 补测） | [Iteration9_ForceRefresh_SPEC.md](./Iteration9_ForceRefresh_SPEC.md) | 2026-05-10 |
 | v0.9 | Repo 卡片 Refresh / Remove 按钮外显平铺 | SPEC（待实施） | [Iteration8_RepoActionsInline_SPEC.md](./Iteration8_RepoActionsInline_SPEC.md) | 2026-05-10 |

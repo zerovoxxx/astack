@@ -67,9 +67,14 @@ docs/version/
 
 ## 5. 当前活跃迭代
 
-**最近完成：** v0.8 — Auto-adopt Reflow（2026-04-23，[spec](docs/version/Iteration7_BootstrapReflow_SPEC.md)）— 修复"先注册项目→后加 repo→UI 不更新"的闭环 bug：`origin='auto'` LocalSkill 允许被 scanRaw 重分类，subscribe 成功后翻 `name_collision`；前端 `loadBootstrap` 切到幂等写；R8 / P8 沉淀至 retro
+**当前 SPEC：** v0.12 — Plugin Marketplace 布局（2026-05-13，[spec](docs/version/Iteration11_PluginMarketplaceLayout_SPEC.md)）— 在 `ScanRootKind` 上新增 `plugin-marketplace` 成员，扫描 `<root>/<plugin>/{skills,commands,agents}/` 二级容器（白名单凭证 `.claude-plugin/plugin.json`）；skill `name` 通过 `<plugin>/<inner>` 命名空间解决跨 plugin 同名；CLI 同步加 `--scan-config-json` 让任意 marketplace 仓库可 register。**不**预置 `claude-plugins-official` 为 builtin seed，**不**动 Web UI、DB schema、subscription/sync 路径
+
+**最近完成：** v0.11 — Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊（2026-05-11，[spec](docs/version/Iteration10_AutoSync_SPEC.md)）— `AutoSyncService` 上线，~1h cycle + 四象限决策 + needs-attention 安全停泊（绝不自动 merge/rebase/force-push）；UI 顶部 Auto-sync 开关 + RepoCard SyncStateSection；deprecated `auto-sync-on-focus` localStorage 在 ProjectSettingsPanel 删除
 
 **历史完成：**
+- v0.10 — Force Refresh：脏 open-source 镜像的显式 reset + pull 入口（2026-05-10，[spec](docs/version/Iteration9_ForceRefresh_SPEC.md)）— `POST /repos/:id/refresh` body 加 `force` + response 加 `skipped_reason?`/`reset_performed?`，UI 第三按钮 Force pull
+- v0.9 — Repo 卡片操作按钮外显平铺（2026-05-10，[spec](docs/version/Iteration8_RepoActionsInline_SPEC.md)）— `⋯` 菜单替换为平铺 `[Refresh][Remove]` 按钮
+- v0.8 — Auto-adopt Reflow（2026-04-23，[spec](docs/version/Iteration7_BootstrapReflow_SPEC.md)）— 修复"先注册项目→后加 repo→UI 不更新"的闭环 bug：`origin='auto'` LocalSkill 允许被 scanRaw 重分类，subscribe 成功后翻 `name_collision`；前端 `loadBootstrap` 切到幂等写；R8 / P8 沉淀至 retro
 - v0.7 — Local Skills as First-Class Citizens（2026-04-23，[spec](docs/version/Iteration6_LocalSkills_SPEC.md)）— PR1–PR6 全部落地，LocalSkill 作为一等公民域概念上线；UnmatchedBanner 常驻 / auto-adopt 仅 bootstrap 触发 / jsdom 测试坑已沉淀 retro
 - v0.6 — Open-source 镜像卫生 + Resolve 路径自愈 + 日志落盘（2026-04-22，[spec](docs/version/Iteration5_MirrorHygiene_SPEC.md)）— PR1–PR5 全部落地，R6/R7/P6/P7 已沉淀至 retro
 - v0.5 — Subscription Bootstrap for Legacy Projects（2026-04-21，[spec](docs/version/Iteration4_SubscriptionBootstrap_SPEC.md)）— PR1–PR5 已落地，PR6 E2E 规划中
