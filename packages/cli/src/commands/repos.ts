@@ -3,13 +3,57 @@
  * managing skill repos from the CLI. Dashboard does the same via Web.
  */
 
-import type { RepoKind } from "@astack/shared";
+import {
+  AstackError,
+  ErrorCode,
+  ScanConfigSchema,
+  type RepoKind,
+  type ScanConfig
+} from "@astack/shared";
 import kleur from "kleur";
 
 import { AstackClient } from "../client.js";
 import { DEFAULT_DAEMON_URL } from "../context.js";
 import { ensureDaemonOnline } from "../daemon-check.js";
 import { printInfo, printOk, printTable, printWarn } from "../output.js";
+
+/**
+ * v0.12 — parse + validate `--scan-config-json <json>` into a typed
+ * `ScanConfig`. Two failure modes are surfaced as `AstackError` with
+ * `ErrorCode.VALIDATION_FAILED` so the bin.ts wrap() handler renders
+ * them with the same styling as daemon-side validation errors:
+ *
+ *   1. JSON.parse failure              → details.detail = parse error msg
+ *   2. ZodError (shape doesn't match)  → details.detail = formatted issues
+ *
+ * Exported for direct unit testing (the network path is not exercised
+ * — see test/repos.test.ts T9–T11).
+ */
+export function parseScanConfigJson(raw: string): ScanConfig {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new AstackError(
+      ErrorCode.VALIDATION_FAILED,
+      "--scan-config-json: invalid JSON",
+      { detail: err instanceof Error ? err.message : String(err) }
+    );
+  }
+  const result = ScanConfigSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new AstackError(
+      ErrorCode.VALIDATION_FAILED,
+      "--scan-config-json: schema validation failed",
+      {
+        detail: result.error.issues
+          .map((i) => `${i.path.join(".") || "<root>"}: ${i.message}`)
+          .join("; ")
+      }
+    );
+  }
+  return result.data;
+}
 
 export async function runReposRegister(
   gitUrl: string,
@@ -18,18 +62,43 @@ export async function runReposRegister(
     /** True → register as open-source (pull-only). Default custom. */
     readonly?: boolean;
     daemonUrl?: string;
+    /**
+     * v0.12 — raw JSON from `--scan-config-json` flag. Parsed +
+     * validated BEFORE the daemon health check so users get fast
+     * feedback on a malformed config without waiting on the network.
+     */
+    scanConfigJson?: string;
+    /**
+     * Test seam: dependency-injected client. When omitted, a real
+     * `AstackClient` is constructed and `ensureDaemonOnline` is called.
+     * Tests inject a mock to exercise CLI plumbing without spinning up
+     * the daemon.
+     */
+    client?: AstackClient;
   } = {}
 ): Promise<void> {
-  const client = new AstackClient({
-    baseUrl: opts.daemonUrl ?? DEFAULT_DAEMON_URL
-  });
-  await ensureDaemonOnline(client);
+  // Validate scan-config FIRST so a bad JSON shape doesn't first burn
+  // a network round-trip on the health check.
+  let scanConfig: ScanConfig | undefined;
+  if (opts.scanConfigJson !== undefined) {
+    scanConfig = parseScanConfigJson(opts.scanConfigJson);
+  }
+
+  const client =
+    opts.client ??
+    new AstackClient({
+      baseUrl: opts.daemonUrl ?? DEFAULT_DAEMON_URL
+    });
+  if (!opts.client) {
+    await ensureDaemonOnline(client);
+  }
 
   const kind: RepoKind = opts.readonly ? "open-source" : "custom";
   const { repo, command_count, skill_count } = await client.registerRepo({
     git_url: gitUrl,
     name: opts.name,
-    kind
+    kind,
+    scan_config: scanConfig
   });
   const kindLabel =
     repo.kind === "open-source" ? kleur.yellow("[open-source, pull-only]") : "";

@@ -208,12 +208,17 @@ reposCmd
     "register as an open-source repo (pull-only, no push)",
     false
   )
+  .option(
+    "--scan-config-json <json>",
+    "override scan layout (raw JSON; e.g. '{\"roots\":[{\"path\":\"plugins\",\"kind\":\"plugin-marketplace\"}]}')"
+  )
   .option("--daemon-url <url>", "override daemon URL")
   .action((url: string, opts) =>
     wrap(() =>
       runReposRegister(url, {
         name: opts.name,
         readonly: opts.readonly === true,
+        scanConfigJson: opts.scanConfigJson,
         daemonUrl: opts.daemonUrl
       })
     )
