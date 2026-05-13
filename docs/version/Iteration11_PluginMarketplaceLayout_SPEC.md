@@ -1,12 +1,10 @@
 # v0.12 — Plugin Marketplace 布局：扫描 `<root>/<plugin>/{skills,commands,agents}/` 二级容器
 
-> **文档状态: CR中（2026-05-13）**
+> **文档状态: 已完成（IMPLEMENTED · CR 通过 · 2026-05-13）**
 >
-> 进入 `/code_review` 流程，按 PR1 / PR2 / PR3 顺序审查。
-
-> **文档状态: 已完成（IMPLEMENTED · 2026-05-13）**
+> PR1（shared 域 + scanner 三文件原子 + 后端单测 T1–T8）/ PR2（CLI `--scan-config-json` + 单测 T9–T11）/ PR3（文档同步）全部落地；38 个 server scanner 测试 + 10 个 cli repos 测试全绿；server / cli typecheck 通过。
 >
-> PR1（shared 域 + scanner 三文件原子 + 后端单测 T1–T8）/ PR2（CLI `--scan-config-json` + 单测 T9–T11）/ PR3（文档同步）全部落地；38 个 server scanner 测试 + 10 个 cli repos 测试全绿；server / cli typecheck 通过。`/retro` 走查与 `/code_review` 合并后再执行。
+> **`/code_review` 结论（2026-05-13）：** 三 Phase 全部通过，0 高 / 0 中 / 0 低问题，审查报告见 [`./review/Iteration11_PluginMarketplaceLayout_CR.md`](./review/Iteration11_PluginMarketplaceLayout_CR.md)。候选黄金法则 R9 是否沉淀留待合并后 `/retro` 走查单独决议。
 
 > **文档状态：SPEC（待实施）· 2026-05-13**
 >
