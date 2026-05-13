@@ -53,7 +53,8 @@ export const RepoStatusSchema = z.enum([
 export const ScanRootKindSchema = z.enum([
   ScanRootKind.SkillDirs,
   ScanRootKind.CommandFiles,
-  ScanRootKind.AgentFiles
+  ScanRootKind.AgentFiles,
+  ScanRootKind.PluginMarketplace
 ]);
 export const ScanRootSchema = z.object({
   path: z.string(),

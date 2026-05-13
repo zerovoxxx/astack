@@ -32,6 +32,7 @@ import {
 } from "@astack/shared";
 
 import { scanFlatFiles } from "./flat-files.js";
+import { scanPluginMarketplace } from "./plugin-marketplace.js";
 import { scanSkillDirs } from "./skill-dirs.js";
 
 export interface ScannedSkill {
@@ -91,6 +92,13 @@ export function scanRepo(
       case ScanRootKind.AgentFiles:
         scanFlatFiles(repoPath, root.path, skills, warnings, SkillType.Agent);
         break;
+      case ScanRootKind.PluginMarketplace:
+        // v0.12: <root>/<plugin>/{skills,commands,agents}/ two-level
+        // marketplace layout; plugin slug becomes a name namespace
+        // prefix (`<plugin>/<inner>`) to avoid cross-plugin collisions
+        // on the (type, name) dedup key.
+        scanPluginMarketplace(repoPath, root.path, skills, warnings);
+        break;
       default: {
         // Exhaustiveness: if a new ScanRootKind is added, TS will error here.
         const _exhaustive: never = root.kind;
@@ -116,6 +124,16 @@ export function scanRepo(
   // Filter system-skill-reserved names (v0.4 A9). Only affects type=skill:
   // commands/agents live in separate subdirs so never collide with system
   // skill seed directories.
+  //
+  // v0.12: comparison is done on the BARE `s.name` (which may be a
+  // namespaced `<plugin>/<inner>` for plugin-marketplace results). We
+  // intentionally do NOT strip a `/`-prefix before comparing — the v0.4
+  // blacklist exists to prevent a repo skill from clobbering the system
+  // seed dir at `<project>/.claude/skills/<id>/`, and a plugin-namespaced
+  // skill lands at `<project>/.claude/skills/<plugin>/<id>/` (a different
+  // path), so it cannot clobber the seed. Stripping the prefix would
+  // false-positive on legitimate plugin entries like
+  // `code-review/harness-init`.
   const blacklist = options.systemSkillIds ?? new Set<string>();
   if (blacklist.size === 0) {
     return { skills: deduped, warnings };

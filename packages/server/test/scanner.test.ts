@@ -410,3 +410,278 @@ description: x
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// v0.12 — plugin-marketplace layout
+// ---------------------------------------------------------------------------
+
+/**
+ * Helper: write `<dir>/<plugin>/.claude-plugin/plugin.json` so the
+ * marketplace scanner accepts `<plugin>` as a valid container.
+ * Content of plugin.json is intentionally trivial — v0.12 only checks
+ * existence, not contents (see spec §2.2).
+ */
+function writePluginManifest(root: string, pluginSlug: string): void {
+  const dir = path.join(root, pluginSlug, ".claude-plugin");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "plugin.json"), `{"name":"${pluginSlug}"}`);
+}
+
+describe("scanRepo — plugin-marketplace layout (v0.12)", () => {
+  let dir: tmp.DirectoryResult;
+  const marketplaceConfig: ScanConfig = {
+    roots: [{ path: "plugins", kind: ScanRootKind.PluginMarketplace }]
+  };
+
+  beforeEach(async () => {
+    dir = await tmp.dir({ unsafeCleanup: true });
+  });
+  afterEach(async () => {
+    await dir.cleanup();
+  });
+
+  it("T1: discovers plugin-namespaced skills/commands/agents across containers", () => {
+    const pluginsRoot = path.join(dir.path, "plugins");
+
+    // Plugin A: commands-only.
+    writePluginManifest(pluginsRoot, "code-review");
+    fs.mkdirSync(path.join(pluginsRoot, "code-review", "commands"), {
+      recursive: true
+    });
+    fs.writeFileSync(
+      path.join(pluginsRoot, "code-review", "commands", "code-review.md"),
+      "x"
+    );
+
+    // Plugin B: agents + commands.
+    writePluginManifest(pluginsRoot, "feature-dev");
+    fs.mkdirSync(path.join(pluginsRoot, "feature-dev", "agents"), {
+      recursive: true
+    });
+    fs.writeFileSync(
+      path.join(pluginsRoot, "feature-dev", "agents", "code-architect.md"),
+      "x"
+    );
+    fs.mkdirSync(path.join(pluginsRoot, "feature-dev", "commands"), {
+      recursive: true
+    });
+    fs.writeFileSync(
+      path.join(pluginsRoot, "feature-dev", "commands", "feature-dev.md"),
+      "x"
+    );
+
+    // Plugin C: skills-only.
+    writePluginManifest(pluginsRoot, "skill-creator");
+    fs.mkdirSync(
+      path.join(pluginsRoot, "skill-creator", "skills", "skill-creator"),
+      { recursive: true }
+    );
+    fs.writeFileSync(
+      path.join(
+        pluginsRoot,
+        "skill-creator",
+        "skills",
+        "skill-creator",
+        "SKILL.md"
+      ),
+      "---\ndescription: builds skills\n---\n"
+    );
+
+    const result = scanRepo(dir.path, marketplaceConfig);
+    expect(result.warnings).toEqual([]);
+
+    const byKey = new Map(
+      result.skills.map((s) => [`${s.type}/${s.name}`, s] as const)
+    );
+
+    expect(byKey.has("command/code-review/code-review")).toBe(true);
+    expect(byKey.get("command/code-review/code-review")!.relPath).toBe(
+      "plugins/code-review/commands/code-review.md"
+    );
+
+    expect(byKey.has("agent/feature-dev/code-architect")).toBe(true);
+    expect(byKey.has("command/feature-dev/feature-dev")).toBe(true);
+
+    expect(byKey.has("skill/skill-creator/skill-creator")).toBe(true);
+    expect(byKey.get("skill/skill-creator/skill-creator")!.description).toBe(
+      "builds skills"
+    );
+    expect(byKey.get("skill/skill-creator/skill-creator")!.relPath).toBe(
+      "plugins/skill-creator/skills/skill-creator"
+    );
+
+    expect(result.skills).toHaveLength(4);
+  });
+
+  it("T2: warns and skips a NAME_REGEX-passing dir without plugin.json", () => {
+    const pluginsRoot = path.join(dir.path, "plugins");
+    fs.mkdirSync(path.join(pluginsRoot, "almost-a-plugin", "commands"), {
+      recursive: true
+    });
+    fs.writeFileSync(
+      path.join(pluginsRoot, "almost-a-plugin", "commands", "x.md"),
+      "x"
+    );
+
+    const result = scanRepo(dir.path, marketplaceConfig);
+    expect(result.skills).toEqual([]);
+    expect(
+      result.warnings.some(
+        (w) =>
+          w.includes("plugins/almost-a-plugin") &&
+          w.includes(".claude-plugin/plugin.json")
+      )
+    ).toBe(true);
+  });
+
+  it("T3: plugin with manifest but no skills/commands/agents → 0 skills, 0 warnings", () => {
+    const pluginsRoot = path.join(dir.path, "plugins");
+    writePluginManifest(pluginsRoot, "pure-mcp");
+    // Pure-MCP plugins legally exist with only `.mcp.json`. We don't
+    // parse it; we just don't warn about an empty container.
+
+    const result = scanRepo(dir.path, marketplaceConfig);
+    expect(result.skills).toEqual([]);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("T4: cross-plugin same inner names both survive (no dedup)", () => {
+    const pluginsRoot = path.join(dir.path, "plugins");
+    for (const slug of ["plugin-a", "plugin-b"]) {
+      writePluginManifest(pluginsRoot, slug);
+      fs.mkdirSync(path.join(pluginsRoot, slug, "commands"), {
+        recursive: true
+      });
+      fs.writeFileSync(
+        path.join(pluginsRoot, slug, "commands", "code-review.md"),
+        "x"
+      );
+    }
+
+    const result = scanRepo(dir.path, marketplaceConfig);
+    expect(result.warnings).toEqual([]);
+    const names = result.skills.map((s) => s.name).sort();
+    expect(names).toEqual(["plugin-a/code-review", "plugin-b/code-review"]);
+  });
+
+  it("T5a: SKILL.md frontmatter `name` matching dir → no warning (compares bare inner)", () => {
+    const pluginsRoot = path.join(dir.path, "plugins");
+    writePluginManifest(pluginsRoot, "alpha");
+    const skillDir = path.join(pluginsRoot, "alpha", "skills", "inner");
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, "SKILL.md"),
+      "---\nname: inner\ndescription: ok\n---\n"
+    );
+
+    const result = scanRepo(dir.path, marketplaceConfig);
+    expect(result.warnings).toEqual([]);
+    expect(result.skills.map((s) => s.name)).toEqual(["alpha/inner"]);
+  });
+
+  it("T5b: SKILL.md frontmatter `name` mismatching dir → warning compares bare inner (not prefixed)", () => {
+    const pluginsRoot = path.join(dir.path, "plugins");
+    writePluginManifest(pluginsRoot, "alpha");
+    const skillDir = path.join(pluginsRoot, "alpha", "skills", "inner");
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, "SKILL.md"),
+      "---\nname: different\ndescription: x\n---\n"
+    );
+
+    const result = scanRepo(dir.path, marketplaceConfig);
+    expect(result.skills.map((s) => s.name)).toEqual(["alpha/inner"]);
+    // Warning text must reference the bare inner name "different" vs
+    // "inner" — NOT something like "alpha/inner" — because plugin
+    // authors don't know the marketplace slug.
+    const w = result.warnings.find((m) =>
+      /does not match directory/.test(m)
+    );
+    expect(w).toBeDefined();
+    expect(w!).toContain("'different'");
+    expect(w!).toContain("'inner'");
+    expect(w!).not.toContain("'alpha/inner'");
+  });
+
+  it("T6: plugin slug failing NAME_REGEX → warning, no scan into the container", () => {
+    const pluginsRoot = path.join(dir.path, "plugins");
+    // "bad..name" — has dots, fails NAME_REGEX (alnum/_/- only).
+    fs.mkdirSync(path.join(pluginsRoot, "bad..name", "commands"), {
+      recursive: true
+    });
+    writePluginManifest(pluginsRoot, "bad..name");
+    fs.writeFileSync(
+      path.join(pluginsRoot, "bad..name", "commands", "x.md"),
+      "x"
+    );
+
+    const result = scanRepo(dir.path, marketplaceConfig);
+    expect(result.skills).toEqual([]);
+    expect(
+      result.warnings.some(
+        (w) =>
+          w.includes("plugins/bad..name") &&
+          w.includes("invalid name")
+      )
+    ).toBe(true);
+  });
+
+  it("T7: dotdir entries (.git, .github, .claude-plugin) are silently skipped", () => {
+    const pluginsRoot = path.join(dir.path, "plugins");
+    fs.mkdirSync(path.join(pluginsRoot, ".git"), { recursive: true });
+    fs.mkdirSync(path.join(pluginsRoot, ".github"), { recursive: true });
+    fs.mkdirSync(path.join(pluginsRoot, ".claude-plugin"), { recursive: true });
+    // One real plugin alongside, to confirm scan still proceeds.
+    writePluginManifest(pluginsRoot, "real-plugin");
+    fs.mkdirSync(path.join(pluginsRoot, "real-plugin", "commands"), {
+      recursive: true
+    });
+    fs.writeFileSync(
+      path.join(pluginsRoot, "real-plugin", "commands", "go.md"),
+      "x"
+    );
+
+    const result = scanRepo(dir.path, marketplaceConfig);
+    expect(result.warnings).toEqual([]);
+    expect(result.skills.map((s) => s.name)).toEqual(["real-plugin/go"]);
+  });
+
+  it("multi-marketplace-root config (plugins/ + external_plugins/) merges results", () => {
+    const cfg: ScanConfig = {
+      roots: [
+        { path: "plugins", kind: ScanRootKind.PluginMarketplace },
+        { path: "external_plugins", kind: ScanRootKind.PluginMarketplace }
+      ]
+    };
+
+    writePluginManifest(path.join(dir.path, "plugins"), "internal");
+    fs.mkdirSync(path.join(dir.path, "plugins", "internal", "commands"), {
+      recursive: true
+    });
+    fs.writeFileSync(
+      path.join(dir.path, "plugins", "internal", "commands", "a.md"),
+      "x"
+    );
+
+    writePluginManifest(path.join(dir.path, "external_plugins"), "third-party");
+    fs.mkdirSync(
+      path.join(dir.path, "external_plugins", "third-party", "agents"),
+      { recursive: true }
+    );
+    fs.writeFileSync(
+      path.join(
+        dir.path,
+        "external_plugins",
+        "third-party",
+        "agents",
+        "b.md"
+      ),
+      "x"
+    );
+
+    const result = scanRepo(dir.path, cfg);
+    expect(result.warnings).toEqual([]);
+    const names = result.skills.map((s) => s.name).sort();
+    expect(names).toEqual(["internal/a", "third-party/b"]);
+  });
+});

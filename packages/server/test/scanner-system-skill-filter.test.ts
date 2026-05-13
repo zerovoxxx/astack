@@ -12,7 +12,7 @@ import path from "node:path";
 import tmp from "tmp-promise";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { DEFAULT_SCAN_CONFIG } from "@astack/shared";
+import { DEFAULT_SCAN_CONFIG, ScanRootKind, type ScanConfig } from "@astack/shared";
 
 import { scanRepo } from "../src/scanner/index.js";
 
@@ -121,5 +121,53 @@ describe("scanRepo — systemSkillIds filter (A9)", () => {
       systemSkillIds: new Set(["harness-init"])
     });
     expect(result.skills.map((s) => s.name).sort()).toEqual(["alpha", "beta"]);
+  });
+
+  /**
+   * v0.12 T8 — plugin-marketplace results carry namespaced names like
+   * `<plugin>/<inner>`. The blacklist matches BARE names verbatim and
+   * does NOT strip the `<plugin>/` prefix before comparing — see the
+   * justification comment at scanner/index.ts blacklist section. A
+   * plugin-namespaced skill lands under `<project>/.claude/skills/
+   * <plugin>/<inner>/` (a different path from the system seed at
+   * `<project>/.claude/skills/<inner>/`) so it cannot clobber the seed
+   * dir, hence must NOT be filtered.
+   */
+  it("T8 (v0.12): plugin-namespaced 'X/harness-init' is NOT filtered by 'harness-init' blacklist", async () => {
+    const dir = await tmp.dir({ unsafeCleanup: true });
+    repos.push(dir);
+
+    // Build a marketplace fixture with one plugin whose inner skill
+    // happens to be called `harness-init`.
+    const pluginsRoot = path.join(dir.path, "plugins");
+    const manifestDir = path.join(pluginsRoot, "code-review", ".claude-plugin");
+    fs.mkdirSync(manifestDir, { recursive: true });
+    fs.writeFileSync(path.join(manifestDir, "plugin.json"), `{}`);
+    const skillDir = path.join(
+      pluginsRoot,
+      "code-review",
+      "skills",
+      "harness-init"
+    );
+    fs.mkdirSync(skillDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillDir, "SKILL.md"),
+      "---\nname: harness-init\ndescription: x\n---\n"
+    );
+
+    const cfg: ScanConfig = {
+      roots: [{ path: "plugins", kind: ScanRootKind.PluginMarketplace }]
+    };
+    const result = scanRepo(dir.path, cfg, {
+      systemSkillIds: new Set(["harness-init"])
+    });
+
+    // Plugin-namespaced name survives the blacklist (no prefix stripping).
+    expect(result.skills.map((s) => s.name)).toEqual([
+      "code-review/harness-init"
+    ]);
+    expect(
+      result.warnings.some((w) => w.includes("reserved"))
+    ).toBe(false);
   });
 });

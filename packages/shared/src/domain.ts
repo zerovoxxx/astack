@@ -182,9 +182,22 @@ export interface ScanRoot {
   path: string;
   /**
    * How to interpret entries under `path`:
-   *   - "skill-dirs"     subdirectories containing SKILL.md → type='skill'
-   *   - "command-files"  `*.md` files (flat) → type='command'
-   *   - "agent-files"    `*.md` files (flat) → type='agent'
+   *   - "skill-dirs"          subdirectories containing SKILL.md → type='skill'
+   *   - "command-files"       `*.md` files (flat) → type='command'
+   *   - "agent-files"         `*.md` files (flat) → type='agent'
+   *   - "plugin-marketplace"  treat <path> as a directory of plugin
+   *                           containers (Claude Code Plugin Marketplace
+   *                           layout, e.g. `anthropics/claude-plugins-official`).
+   *                           Each first-level subdir with
+   *                           `.claude-plugin/plugin.json` is expanded
+   *                           into an implicit triple:
+   *                               <plugin>/skills    → scanSkillDirs
+   *                               <plugin>/commands  → scanFlatFiles(command)
+   *                               <plugin>/agents    → scanFlatFiles(agent)
+   *                           Skill `name` is namespaced as
+   *                           `<plugin>/<inner>` so cross-plugin same
+   *                           inner names don't collide on the
+   *                           `UNIQUE(repo_id, type, name)` skills key.
    */
   kind: ScanRootKind;
 }
@@ -192,7 +205,8 @@ export interface ScanRoot {
 export const ScanRootKind = {
   SkillDirs: "skill-dirs",
   CommandFiles: "command-files",
-  AgentFiles: "agent-files"
+  AgentFiles: "agent-files",
+  PluginMarketplace: "plugin-marketplace"
 } as const;
 export type ScanRootKind = (typeof ScanRootKind)[keyof typeof ScanRootKind];
 

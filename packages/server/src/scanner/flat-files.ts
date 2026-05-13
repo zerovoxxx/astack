@@ -5,6 +5,16 @@
  *
  * The only difference between command and agent is the resulting
  * SkillType; filesystem semantics are identical.
+ *
+ * v0.12: optional `namePrefix` lets `scanPluginMarketplace` inject a
+ * single plugin-slug prefix so the resulting skill `name` becomes
+ * `<plugin>/<inner>`. The prefix MUST itself satisfy NAME_REGEX (no
+ * embedded `/`); enforced as an invariant below to prevent accidental
+ * multi-segment nesting if a future caller misuses the parameter.
+ *
+ * Frontmatter `name:` mismatch warning compares the BARE basename
+ * (without prefix), since plugin authors writing `<plugin>/commands/x.md`
+ * don't know the marketplace slug.
  */
 
 import path from "node:path";
@@ -21,8 +31,14 @@ export function scanFlatFiles(
   rootPath: string,
   out: ScannedSkill[],
   warnings: string[],
-  resultType: SkillTypeT
+  resultType: SkillTypeT,
+  namePrefix: string = ""
 ): void {
+  if (namePrefix !== "" && !NAME_REGEX.test(namePrefix)) {
+    throw new Error(
+      `scanFlatFiles: namePrefix '${namePrefix}' must match NAME_REGEX`
+    );
+  }
   const dir = rootPath === "" ? repoRoot : path.join(repoRoot, rootPath);
   if (!isDir(dir)) return;
 
@@ -52,7 +68,7 @@ export function scanFlatFiles(
 
     out.push({
       type: resultType,
-      name: base,
+      name: namePrefix ? `${namePrefix}/${base}` : base,
       relPath: posixJoin(rootPath, entry.name),
       description: fm.data.description ?? null
     });
