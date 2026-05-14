@@ -220,6 +220,52 @@ export const DEFAULT_SCAN_CONFIG: ScanConfig = {
   ]
 };
 
+export const CLAUDE_PLUGINS_OFFICIAL_SCAN_CONFIG: ScanConfig = {
+  roots: [
+    { path: "plugins", kind: ScanRootKind.PluginMarketplace },
+    { path: "external_plugins", kind: ScanRootKind.PluginMarketplace }
+  ]
+};
+
+const KNOWN_MARKETPLACE_SCAN_CONFIGS: Record<string, ScanConfig> = {
+  "anthropics/claude-plugins-official": CLAUDE_PLUGINS_OFFICIAL_SCAN_CONFIG
+};
+
+/**
+ * Return a scanner layout for known non-standard marketplace repos.
+ *
+ * This is not a builtin seed decision. It only fills the layout when the
+ * user explicitly registers the repo, or self-heals an old row whose
+ * scan_config is still null.
+ */
+export function inferScanConfigForGitUrl(gitUrl: string): ScanConfig | null {
+  const slug = normalizeGitHubRepoSlug(gitUrl);
+  if (!slug) return null;
+  const config = KNOWN_MARKETPLACE_SCAN_CONFIGS[slug];
+  if (!config) return null;
+  return { roots: config.roots.map((root) => ({ ...root })) };
+}
+
+function normalizeGitHubRepoSlug(gitUrl: string): string | null {
+  const trimmed = gitUrl.trim().replace(/\/+$/, "");
+  const scpLike = /^git@github\.com:([^/]+\/[^/]+?)(?:\.git)?$/i.exec(trimmed);
+  if (scpLike) return scpLike[1]!.toLowerCase();
+
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (url.hostname.toLowerCase() !== "github.com") return null;
+  const pathname = url.pathname.replace(/^\/+|\/+$/g, "");
+  const noGit = pathname.endsWith(".git") ? pathname.slice(0, -4) : pathname;
+  const parts = noGit.split("/").filter(Boolean);
+  if (parts.length !== 2) return null;
+  return `${parts[0]!.toLowerCase()}/${parts[1]!.toLowerCase()}`;
+}
+
 /**
  * URLs of the builtin seed repos that SeedService clones on first run.
  *

@@ -109,33 +109,7 @@ async function waitForLocalSkillsCount(
   );
 }
 
-/**
- * Poll the daemon suggestions endpoint until at least `expectedCount`
- * unmatched items are returned.
- */
-async function waitForSuggestionsCount(
-  request: APIRequestContext,
-  projectId: number,
-  expectedCount: number,
-  timeoutMs = 15_000
-): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  let last = 0;
-  while (Date.now() < deadline) {
-    const res = await request.get(
-      `${daemonUrl}/api/projects/${projectId}/local-skills/suggestions`
-    );
-    if (res.ok()) {
-      const body = (await res.json()) as { suggestions: unknown[] };
-      last = body.suggestions.length;
-      if (last >= expectedCount) return;
-    }
-    await new Promise((r) => setTimeout(r, 200));
-  }
-  throw new Error(
-    `waitForSuggestionsCount: only got ${last}/${expectedCount} after ${timeoutMs}ms`
-  );
-}
+
 
 test.describe("local skills — legacy auto-adopt", () => {
   let projectDir: string;
@@ -214,13 +188,16 @@ test.describe("local skills — manual adopt + unadopt round-trip", () => {
     if (projectDir) rmSync(projectDir, { recursive: true, force: true });
   });
 
-  test("newly-dropped file shows as suggestion → adopt → unadopt round-trip", async ({
+  test("newly-dropped file auto-adopts on tab open → unadopt round-trip preserves file on disk", async ({
     page,
     request
   }) => {
-    // Scenario 2 — register an empty project first, then drop a file on
-    // disk post-registration so auto-adopt does NOT catch it (auto-adopt
-    // runs only at bootstrap time; subsequent drops become suggestions).
+    // Scenario 2 — register an empty project, then drop a file on disk
+    // post-registration. With v0.8's `loadBootstrap` calling
+    // `scanAndAutoSubscribe` on every project-detail open, the freshly
+    // dropped entry gets auto-adopted (`origin='auto'`) when the user
+    // navigates into the project. This still exercises the manual
+    // unadopt path with the non-destructive default (delete_files=false).
     mkdirSync(path.join(projectDir, ".claude"), { recursive: true });
     const project = await registerProject(request, projectDir);
 
@@ -232,34 +209,15 @@ test.describe("local skills — manual adopt + unadopt round-trip", () => {
     );
 
     await page.goto(`/projects/${project.id}?tab=local-skills`);
-    // Rescan via the tab button (drives API; fires local_skills.changed).
-    await page.getByRole("button", { name: /^Rescan$/ }).click();
 
-    // Wait for the suggestion to land at the daemon before asserting UI.
-    await waitForSuggestionsCount(request, project.id, 1);
-
-    // Header button reflects the suggestion count.
-    await expect(
-      page.getByRole("button", {
-        name: /\+ Adopt from suggestions \(1\)/
-      })
-    ).toBeVisible({ timeout: 10_000 });
-
-    // Open AdoptDrawer, tick foo, apply.
-    await page.getByRole("button", {
-      name: /\+ Adopt from suggestions \(1\)/
-    }).click();
-    const checkbox = page.getByRole("checkbox", { name: /Adopt command foo/i });
-    await expect(checkbox).toBeVisible();
-    await checkbox.check();
-    await page.getByRole("button", { name: /^Adopt \(1\)$/ }).click();
-
-    // Wait for the row to actually land at the daemon.
+    // ProjectDetailPage mount triggers POST /bootstrap/scan → auto-adopt
+    // for the new unmatched entry. Wait for the row to land at the
+    // daemon level before driving the UI.
     await waitForLocalSkillsCount(request, project.id, 1);
 
-    // Row renders with origin=adopted (manual) — not the auto tooltip.
+    // Row renders with origin=auto (auto-adopted) — the v0.8 contract.
     await expect(
-      page.locator("span[title='Manually adopted']").first()
+      page.locator("span[title='Auto-adopted from existing .claude/']").first()
     ).toBeVisible({ timeout: 10_000 });
 
     // Unadopt — set up dialog handlers that ACCEPT the unadopt confirm

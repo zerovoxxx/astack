@@ -211,6 +211,15 @@ export class RepoRepository {
       .run(fields.head_hash, fields.last_synced, id);
   }
 
+  updateScanConfig(id: number, scanConfig: ScanConfig | null): void {
+    const scanJson = scanConfig == null ? null : JSON.stringify(scanConfig);
+    this.db
+      .prepare<[string | null, number]>(
+        `UPDATE skill_repos SET scan_config = ? WHERE id = ?`
+      )
+      .run(scanJson, id);
+  }
+
   /** Used by SeedService to flip 'seeding' → 'ready' or 'failed'. */
   updateStatus(id: number, status: SkillRepo["status"]): void {
     this.db

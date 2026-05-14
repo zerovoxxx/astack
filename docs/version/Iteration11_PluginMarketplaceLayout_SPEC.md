@@ -19,6 +19,8 @@
 > **触发事件（2026-05-13）：** 用户 register `git@github.com:anthropics/claude-plugins-official.git` 后 dashboard 显示 `read-only · empty · No skills scanned from this repo`。该仓库根目录只有 `plugins/` 与 `external_plugins/` 两个容器，每个 plugin 自带 `.claude-plugin/plugin.json` + 可选 `skills/<n>/SKILL.md` / `commands/*.md` / `agents/*.md`（35 个 internal + 15 个 external，覆盖 `code-review` / `feature-dev` / `skill-creator` / `playwright` 等高价值条目）。Astack 现有 3 种 `ScanRootKind`（`skill-dirs` / `command-files` / `agent-files`）都是**第一层平铺**，无法表达 "先按 plugin 容器分组、再按容器内部 skills/commands/agents 子目录扫" 的二级语义，导致 0 命中。这是 v0.2 三 kind 抽象**首次遇到的真实结构性盲区**。
 >
 > **本迭代性质：** 在 `ScanRootKind` 上**新增第 4 个枚举值** `plugin-marketplace`，对应 scanner 派发新增一个 case 函数；**复用** v0.2 的 `ScanRoot.path` / `ScanRoot.kind` shape 不动；**复用** scanner whitelist 原则（`.claude-plugin/plugin.json` 替代 `SKILL.md` 作为 plugin 容器存在性凭证）；**复用** `(type, name)` 作为 skills 表唯一键，通过把 plugin slug 拼进 `name`（`<plugin>/<inner>`）解决跨 plugin 同名冲突，**不动 DB schema**、**不动 SubscriptionRow / LocalSkillRow shape**。CLI 同步加 `--scan-config-json` 让用户能 register 任意自定义 layout（解决"必须打 curl"的 UX 缺口）。**本迭代不引入 builtin seed**、**不动 Web UI**。
+>
+> **Follow-up 修复（2026-05-14）：** 用户从 Web 注册 `anthropics/claude-plugins-official` 时不会传 `scan_config`，旧 repo 行会一直落回 `DEFAULT_SCAN_CONFIG`，Refresh / Force pull 只能复扫旧布局，仍显示 `empty`。补丁选择方案 C：在 server 注册/刷新路径对已知 marketplace git URL 自动推断 `scan_config`，且对 `scan_config IS NULL` 的旧行在 refresh 时写回正确布局并重扫。该修复仍不把 marketplace 仓库加入 builtin seed，也不新增 Web UI 表单。
 
 ## 0. 迭代缘起
 

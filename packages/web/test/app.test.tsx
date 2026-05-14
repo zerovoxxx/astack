@@ -39,17 +39,24 @@ describe("App routing", () => {
 
   it("renders the Dashboard page on the root route", async () => {
     render(<App />);
-    // Sidebar label + page heading both say 'Dashboard'.
+    // Sidebar label says "Dashboard"; the Dashboard page now hosts the
+    // Matrix grid, so its heading reads "Matrix".
     await waitFor(() => {
-      const matches = screen.getAllByText("Dashboard");
-      expect(matches.length).toBeGreaterThan(0);
+      expect(
+        screen.getByRole("link", { name: /Dashboard/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { level: 1, name: /Matrix/i })
+      ).toBeInTheDocument();
     });
   });
 
-  it("renders 'No projects yet' empty state when the daemon has none", async () => {
+  it("renders the 'Nothing to show yet' empty state when the daemon has nothing", async () => {
     render(<App />);
+    // With no projects + no skills, the Matrix grid (now living on the
+    // Dashboard) shows its empty state instead of a per-project list.
     await waitFor(() => {
-      expect(screen.getByText(/No projects yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/Nothing to show yet/i)).toBeInTheDocument();
     });
   });
 

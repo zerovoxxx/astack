@@ -2,125 +2,146 @@ import type * as React from "react";
 /**
  * Dashboard — default workstation page.
  *
- * Shows one row per project with aggregated sync health.
- * Click any row to navigate to the project detail page.
+ * v0.13: Dashboard now hosts the Skill Matrix (projects × skills cross-view)
+ * directly. The previous per-project summary table and the standalone
+ * `/matrix` route have been removed; this page is the single
+ * cross-project skill grid.
+ *
+ * Per design review decision 7.1: rows=projects, cols=skills, with
+ * sticky first column (project name) and sticky header (skill name).
+ * Users with "project少 / 技能多" get a wide horizontal scroller.
  */
 
-import type { Project, SubscriptionWithState } from "@astack/shared";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import type {
+  GetProjectStatusResponse,
+  Project,
+  Skill
+} from "@astack/shared";
+import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
-import { Badge, Button, Card, EmptyState, Skeleton, StatusDot } from "../components/ui/index.js";
+import {
+  Badge,
+  Card,
+  EmptyState,
+  Skeleton,
+  StatusDot
+} from "../components/ui/index.js";
 import { api, AstackError } from "../lib/api.js";
-import { relativeTime } from "../lib/format.js";
+import {
+  shortHash,
+  subscriptionStatusInfo
+} from "../lib/format.js";
 import { useEventListener } from "../lib/sse.js";
+import { useToast } from "../lib/toast.js";
 
-interface ProjectSummary {
-  project: Project;
-  subscriptions: SubscriptionWithState[];
-  lastSynced: string | null;
+interface MatrixCell {
+  state: string;
+  version: string | null;
 }
 
-/** Derive the worst state across all subscriptions. */
-function worstState(subs: SubscriptionWithState[]): SubscriptionWithState["state"] | null {
-  if (subs.length === 0) return null;
-  const priority: Record<SubscriptionWithState["state"], number> = {
-    conflict: 0,
-    behind: 1,
-    "local-ahead": 2,
-    pending: 3,
-    synced: 4
-  };
-  return subs.reduce<SubscriptionWithState>(
-    (best, s) => (priority[s.state] < priority[best.state] ? s : best),
-    subs[0]
-  ).state;
+interface MatrixData {
+  projects: Project[];
+  /** skills grouped in column order */
+  columns: Array<{ skill: Skill; repo: string }>;
+  /** cells[project_id][skill_id] */
+  cells: Map<number, Map<number, MatrixCell>>;
 }
-
-const STATE_CONFIG: Record<
-  SubscriptionWithState["state"],
-  { tone: "error" | "warn" | "accent" | "muted"; label: string }
-> = {
-  conflict:      { tone: "error",  label: "Conflict"     },
-  behind:        { tone: "warn",   label: "Behind"       },
-  "local-ahead": { tone: "warn",   label: "Local Ahead"  },
-  pending:       { tone: "muted",  label: "Pending"      },
-  synced:        { tone: "accent", label: "Synced"       }
-};
 
 export function DashboardPage(): React.JSX.Element {
-  const [summaries, setSummaries] = useState<ProjectSummary[] | null>(null);
-  const [projectCount, setProjectCount] = useState<number | null>(null);
+  const [data, setData] = useState<MatrixData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   const load = useCallback(async () => {
     try {
       setError(null);
-      const { projects } = await api.listProjects({ limit: 500 });
-      setProjectCount(projects.length);
-      if (projects.length === 0) {
-        setSummaries([]);
-        return;
-      }
+      const [projectsRes, reposRes] = await Promise.all([
+        api.listProjects({ limit: 500 }),
+        api.listRepos({ limit: 500 })
+      ]);
 
-      const results = await Promise.all(
-        projects.map(async (project) => {
+      // For each project, fetch its status (subscriptions + state).
+      const statuses: Array<GetProjectStatusResponse | null> = await Promise.all(
+        projectsRes.projects.map(async (p) => {
           try {
-            const status = await api.projectStatus(project.id);
-            return {
-              project,
-              subscriptions: status.subscriptions,
-              lastSynced: status.last_synced
-            } satisfies ProjectSummary;
+            return await api.projectStatus(p.id);
           } catch {
-            return {
-              project,
-              subscriptions: [],
-              lastSynced: null
-            } satisfies ProjectSummary;
+            return null;
           }
         })
       );
 
-      // Sort by worst state first, then alphabetically by project name
-      const priority: Record<SubscriptionWithState["state"], number> = {
-        conflict: 0,
-        behind: 1,
-        "local-ahead": 2,
-        pending: 3,
-        synced: 4
-      };
-      const nullPriority = 5;
-      results.sort((a, b) => {
-        const wa = worstState(a.subscriptions);
-        const wb = worstState(b.subscriptions);
-        const pa = wa !== null ? priority[wa] : nullPriority;
-        const pb = wb !== null ? priority[wb] : nullPriority;
-        if (pa !== pb) return pa - pb;
-        return a.project.name.localeCompare(b.project.name);
+      // Aggregate all skills referenced by any project; order by
+      // (repo name, skill name) for stable columns.
+      const colMap = new Map<
+        number,
+        { skill: Skill; repo: string }
+      >();
+      for (const status of statuses) {
+        if (!status) continue;
+        for (const sub of status.subscriptions) {
+          if (!colMap.has(sub.skill.id)) {
+            colMap.set(sub.skill.id, {
+              skill: sub.skill,
+              repo: sub.repo.name
+            });
+          }
+        }
+      }
+      const columns = Array.from(colMap.values()).sort((a, b) => {
+        if (a.repo !== b.repo) return a.repo.localeCompare(b.repo);
+        return a.skill.name.localeCompare(b.skill.name);
       });
 
-      setSummaries(results);
+      // Build cells map.
+      const cells = new Map<number, Map<number, MatrixCell>>();
+      projectsRes.projects.forEach((project, i) => {
+        const status = statuses[i];
+        const rowMap = new Map<number, MatrixCell>();
+        if (status) {
+          for (const sub of status.subscriptions) {
+            rowMap.set(sub.skill.id, {
+              state: sub.state,
+              version: sub.skill.version
+            });
+          }
+        }
+        cells.set(project.id, rowMap);
+      });
+
+      setData({
+        projects: projectsRes.projects,
+        columns,
+        cells
+      });
+
+      // Silence unused variable.
+      void reposRes;
     } catch (err) {
-      setError(
+      const message =
         err instanceof AstackError
           ? err.message
           : err instanceof Error
             ? err.message
-            : String(err)
-      );
-      setSummaries([]);
-      setProjectCount(null);
+            : String(err);
+      setError(message);
+      toast.error("Could not load matrix", message);
+      setData({
+        projects: [],
+        columns: [],
+        cells: new Map()
+      });
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  useEventListener("skill.updated",    () => void load());
-  useEventListener("conflict.detected",() => void load());
-  useEventListener("sync.completed",   () => void load());
+  useEventListener("skill.updated", () => void load());
+  useEventListener("conflict.detected", () => void load());
+  useEventListener("sync.completed", () => void load());
 
   useEffect(() => {
     const handler = (): void => void load();
@@ -128,170 +149,140 @@ export function DashboardPage(): React.JSX.Element {
     return () => window.removeEventListener("astack:refresh", handler);
   }, [load]);
 
-  const attentionCount = useMemo(
-    () =>
-      (summaries ?? []).filter((s) => {
-        const w = worstState(s.subscriptions);
-        return w !== null && w !== "synced";
-      }).length,
-    [summaries]
-  );
+  if (!data) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-60" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-end justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        {summaries !== null && attentionCount > 0 ? (
-          <Badge tone="warn">{attentionCount} need attention</Badge>
-        ) : null}
+        <h1 className="text-2xl font-semibold tracking-tight">Matrix</h1>
+        <div className="text-xs text-text-muted">
+          <Badge tone="neutral" className="mr-2">
+            {data.projects.length} project(s)
+          </Badge>
+          <Badge tone="neutral">{data.columns.length} skill(s)</Badge>
+        </div>
       </div>
 
       {error ? <ErrorBanner message={error} /> : null}
 
-      {summaries === null ? (
-        <div className="space-y-2">
-          <Skeleton className="h-14" />
-          <Skeleton className="h-14" />
-          <Skeleton className="h-14" />
-        </div>
-      ) : projectCount === 0 ? (
+      {data.projects.length === 0 || data.columns.length === 0 ? (
         <EmptyState
-          title="No projects yet"
-          hint="Register your first project to start syncing skills."
-        >
-          <Link to="/projects?action=new">
-            <Button variant="primary">Register project</Button>
-          </Link>
-        </EmptyState>
-      ) : summaries.every((s) => s.subscriptions.length === 0) ? (
-        <EmptyState
-          title="No skills subscribed yet"
-          hint="Open a project and subscribe to skills from a repo to see sync status here."
-        >
-          <Link to="/projects">
-            <Button variant="primary">Go to projects</Button>
-          </Link>
-        </EmptyState>
+          title="Nothing to show yet"
+          hint="Register projects and subscribe to skills to populate the matrix."
+        />
       ) : (
-        <Card className="p-0 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs border-b border-border">
-                <th className="font-medium px-4 py-3 text-text-secondary">Project</th>
-                <th className="font-medium px-4 py-3 text-text-secondary text-right">Skills</th>
-                <th className="font-medium px-4 py-3 text-text-secondary text-right">Conflicts</th>
-                <th className="font-medium px-4 py-3 text-text-secondary text-right">Behind</th>
-                <th className="font-medium px-4 py-3 text-text-secondary text-right">Pending</th>
-                <th className="font-medium px-4 py-3 text-text-secondary text-right">Synced</th>
-                <th className="font-medium px-4 py-3 text-text-secondary">Status</th>
-                <th className="font-medium px-4 py-3 text-text-secondary">Last synced</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summaries.map((s) => (
-                <ProjectRow key={s.project.id} summary={s} />
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <MatrixGrid data={data} />
       )}
     </div>
   );
 }
 
-function ProjectRow({ summary }: { summary: ProjectSummary }): React.JSX.Element {
-  const navigate = useNavigate();
-  const { project, subscriptions, lastSynced } = summary;
-
-  const counts = useMemo(() => {
-    const c = { conflict: 0, behind: 0, "local-ahead": 0, pending: 0, synced: 0 };
-    for (const s of subscriptions) c[s.state]++;
-    return c;
-  }, [subscriptions]);
-
-  const worst = worstState(subscriptions);
-  const statusConfig = worst !== null ? STATE_CONFIG[worst] : null;
-
-  const needsAttention =
-    worst !== null && worst !== "synced" && subscriptions.length > 0;
-
+function MatrixGrid({ data }: { data: MatrixData }): React.JSX.Element {
   return (
-    <tr
-      className="border-t border-border hover:bg-elevated transition-colors cursor-pointer"
-      onClick={() => navigate(`/projects/${project.id}`)}
-    >
-      {/* Project name */}
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          {needsAttention ? (
-            <span className="w-1.5 h-1.5 rounded-full bg-warn shrink-0" aria-hidden />
-          ) : null}
-          <span className="font-medium text-fg-primary">{project.name}</span>
-          <span className="text-xs text-text-muted font-mono truncate max-w-[160px]">
-            {project.path}
-          </span>
-        </div>
-      </td>
-
-      {/* Total skills */}
-      <td className="px-4 py-3 text-right tabular text-text-secondary">
-        {subscriptions.length}
-      </td>
-
-      {/* Conflict */}
-      <td className="px-4 py-3 text-right tabular">
-        {counts.conflict > 0 ? (
-          <span className="text-error font-medium">{counts.conflict}</span>
-        ) : (
-          <span className="text-text-muted">—</span>
-        )}
-      </td>
-
-      {/* Behind */}
-      <td className="px-4 py-3 text-right tabular">
-        {counts.behind > 0 ? (
-          <span className="text-warn font-medium">{counts.behind}</span>
-        ) : (
-          <span className="text-text-muted">—</span>
-        )}
-      </td>
-
-      {/* Pending */}
-      <td className="px-4 py-3 text-right tabular">
-        {counts.pending > 0 ? (
-          <span className="text-text-secondary">{counts.pending}</span>
-        ) : (
-          <span className="text-text-muted">—</span>
-        )}
-      </td>
-
-      {/* Synced */}
-      <td className="px-4 py-3 text-right tabular">
-        {counts.synced > 0 ? (
-          <span className="text-accent">{counts.synced}</span>
-        ) : (
-          <span className="text-text-muted">—</span>
-        )}
-      </td>
-
-      {/* Overall status */}
-      <td className="px-4 py-3">
-        {statusConfig !== null ? (
-          <span className="inline-flex items-center gap-1.5">
-            <StatusDot tone={statusConfig.tone} />
-            <span className="text-xs text-text-secondary">{statusConfig.label}</span>
-          </span>
-        ) : (
-          <span className="text-xs text-text-muted">No skills</span>
-        )}
-      </td>
-
-      {/* Last synced */}
-      <td className="px-4 py-3 text-xs text-text-muted">
-        {relativeTime(lastSynced)}
-      </td>
-    </tr>
+    <Card className="p-0 overflow-auto">
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr>
+            <th className="sticky top-0 left-0 z-20 bg-surface border-r border-b border-border text-left px-3 py-2 font-normal text-text-muted">
+              Project
+            </th>
+            {data.columns.map((col) => (
+              <th
+                key={col.skill.id}
+                className="sticky top-0 z-10 bg-surface border-b border-border px-2 py-2 font-normal text-text-muted whitespace-nowrap"
+                title={`${col.repo}/${col.skill.name}`}
+              >
+                <div className="font-mono text-text-primary">
+                  {col.skill.name}
+                </div>
+                <div className="text-[10px] text-text-muted">{col.repo}</div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.projects.map((p) => {
+            const row = data.cells.get(p.id) ?? new Map();
+            return (
+              <tr key={p.id} className="group">
+                <td className="sticky left-0 z-10 bg-surface border-r border-b border-border px-3 py-2 whitespace-nowrap group-hover:bg-elevated">
+                  <Link to={`/projects/${p.id}`} className="hover:text-accent">
+                    {p.name}
+                  </Link>
+                </td>
+                {data.columns.map((col) => {
+                  const cell = row.get(col.skill.id);
+                  return (
+                    <td
+                      key={col.skill.id}
+                      className="border-b border-border px-2 py-1 text-center group-hover:bg-elevated"
+                    >
+                      {cell ? (
+                        <MatrixCellView
+                          state={cell.state}
+                          version={cell.version}
+                          projectId={p.id}
+                          skillId={col.skill.id}
+                        />
+                      ) : (
+                        <span className="text-text-muted">—</span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Card>
   );
+}
+
+function MatrixCellView({
+  state,
+  version,
+  projectId,
+  skillId
+}: {
+  state: string;
+  version: string | null;
+  projectId: number;
+  skillId: number;
+}): React.JSX.Element {
+  const info = subscriptionStatusInfo(
+    state as Parameters<typeof subscriptionStatusInfo>[0]
+  );
+  const cell = (
+    <span
+      className="inline-flex items-center gap-1"
+      title={`${info.label}  ${shortHash(version)}`}
+    >
+      <StatusDot tone={info.tone} />
+      <span className="font-mono text-[10px] text-text-muted">
+        {shortHash(version)}
+      </span>
+    </span>
+  );
+
+  if (state === "conflict") {
+    return (
+      <Link
+        to={`/resolve/${projectId}/${skillId}`}
+        className="inline-flex items-center"
+      >
+        {cell}
+      </Link>
+    );
+  }
+  return cell;
 }
 
 function ErrorBanner({ message }: { message: string }): React.JSX.Element {

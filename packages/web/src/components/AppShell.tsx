@@ -4,7 +4,7 @@ import type * as React from "react";
  *
  * Also mounts global hotkeys:
  *   ⌘K / Ctrl+K  — open command palette
- *   ⌘1 .. ⌘5     — jump between primary sections
+ *   ⌘1 .. ⌘4     — jump between primary sections
  *   R            — refresh current data (pages opt-in via event)
  */
 
@@ -87,9 +87,6 @@ export function AppShell(): React.JSX.Element {
         e.preventDefault();
         navigate("/projects");
       } else if (mod && e.key === "4") {
-        e.preventDefault();
-        navigate("/matrix");
-      } else if (mod && e.key === "5") {
         e.preventDefault();
         navigate("/settings");
       } else if (mod && e.key.toLowerCase() === "r") {

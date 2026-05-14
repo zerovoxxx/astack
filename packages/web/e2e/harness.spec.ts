@@ -95,9 +95,19 @@ test.describe("harness tab — v0.4 system skill lifecycle", () => {
       timeout: 5_000
     });
     // Missing files list surfaces at least the first required path.
-    await expect(page.getByText("AGENTS.md", { exact: true })).toBeVisible();
-    // Status detail mentions the slash command (not bash).
-    await expect(page.getByText(/\/init_harness/)).toBeVisible();
+    // Scope to the ScaffoldMissingBlock (role=group, aria-label="Missing
+    // scaffold files") because the same path is also referenced in the
+    // panel's intro copy.
+    const missingList = page.getByRole("group", {
+      name: /Missing scaffold files/i
+    });
+    await expect(
+      missingList.getByText("AGENTS.md", { exact: true })
+    ).toBeVisible();
+    // Status detail mentions the slash command (not bash). The token
+    // also appears in the panel intro copy, so we match the first
+    // occurrence rather than asserting strict-mode uniqueness.
+    await expect(page.getByText(/\/init_harness/).first()).toBeVisible();
 
     // Clicking "Show instructions" reveals the /init_harness block, NOT
     // a raw shell command.

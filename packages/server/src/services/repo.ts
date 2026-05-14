@@ -22,6 +22,7 @@ import {
   DEFAULT_SCAN_CONFIG,
   ErrorCode,
   EventType,
+  inferScanConfigForGitUrl,
   RepoKind,
   SkillType,
   type ScanConfig,
@@ -181,7 +182,14 @@ export class RepoService {
   }): Promise<RegisterRepoOutput> {
     const gitUrl = input.git_url.trim();
     const kind: RepoKind = input.kind ?? RepoKind.Custom;
-    const scanConfig = input.scan_config ?? null;
+    const scanConfig = input.scan_config ?? inferScanConfigForGitUrl(gitUrl);
+
+    if (scanConfig && input.scan_config == null) {
+      this.deps.logger.info("repo.scan_config.inferred", {
+        git_url: gitUrl,
+        roots: scanConfig.roots
+      });
+    }
 
     if (this.repos.findByGitUrl(gitUrl)) {
       throw new AstackError(
@@ -364,6 +372,20 @@ export class RepoService {
         );
       }
 
+      let scanConfig = repo.scan_config;
+      if (scanConfig == null) {
+        const inferred = inferScanConfigForGitUrl(repo.git_url);
+        if (inferred) {
+          this.repos.updateScanConfig(repoId, inferred);
+          scanConfig = inferred;
+          this.deps.logger.info("repo.scan_config.self_healed", {
+            repo_id: repoId,
+            repo_name: repo.name,
+            roots: inferred.roots
+          });
+        }
+      }
+
       let resetPerformed = false;
 
       // Safety check: for read-only (open-source) repos, refuse to pull
@@ -454,7 +476,7 @@ export class RepoService {
         repo.local_path,
         head.head,
         head.head_time,
-        repo.scan_config
+        scanConfig
       );
 
       const updated = this.repos.findById(repoId);

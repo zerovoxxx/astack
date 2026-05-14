@@ -8,7 +8,13 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { ErrorCode, EventType, SkillType } from "@astack/shared";
+import {
+  CLAUDE_PLUGINS_OFFICIAL_SCAN_CONFIG,
+  ErrorCode,
+  EventType,
+  RepoKind,
+  SkillType
+} from "@astack/shared";
 import tmp from "tmp-promise";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -16,8 +22,13 @@ import type { ServerConfig } from "../src/config.js";
 import { openDatabase, type Db } from "../src/db/connection.js";
 import { EventBus, type EmittedEvent } from "../src/events.js";
 import { LockManager } from "../src/lock.js";
+import { RepoRepository } from "../src/db/repos.js";
 import { nullLogger } from "../src/logger.js";
-import { RepoService, deriveNameFromUrl } from "../src/services/repo.js";
+import {
+  RepoService,
+  deriveNameFromUrl,
+  type GitImpl
+} from "../src/services/repo.js";
 
 import { createBareRepo, type BareRepoHandle } from "./helpers/git-fixture.js";
 
@@ -33,6 +44,49 @@ function buildConfig(dataDir: string): ServerConfig {
     lockFile: path.join(dataDir, "daemon.lock"),
     upstreamCacheTtlMs: 5 * 60 * 1000,
     repoLockTimeoutMs: 5000
+  };
+}
+
+function writeMarketplaceFixture(root: string): void {
+  const pluginRoot = path.join(root, "plugins", "code-review");
+  fs.mkdirSync(path.join(pluginRoot, ".claude-plugin"), { recursive: true });
+  fs.writeFileSync(
+    path.join(pluginRoot, ".claude-plugin", "plugin.json"),
+    "{}"
+  );
+  fs.mkdirSync(path.join(pluginRoot, "commands"), { recursive: true });
+  fs.writeFileSync(path.join(pluginRoot, "commands", "code-review.md"), "# review");
+
+  const externalRoot = path.join(root, "external_plugins", "playwright");
+  fs.mkdirSync(path.join(externalRoot, ".claude-plugin"), { recursive: true });
+  fs.writeFileSync(
+    path.join(externalRoot, ".claude-plugin", "plugin.json"),
+    "{}"
+  );
+  fs.mkdirSync(path.join(externalRoot, "agents"), { recursive: true });
+  fs.writeFileSync(path.join(externalRoot, "agents", "runner.md"), "# runner");
+}
+
+function makeMarketplaceGit(): GitImpl {
+  return {
+    async clone(_url, localPath): Promise<void> {
+      writeMarketplaceFixture(localPath);
+    },
+    async pull(): Promise<void> {
+      // Fixture already exists on disk; refresh only needs to re-scan it.
+    },
+    async getHead(): Promise<{ head: string; head_time: string }> {
+      return {
+        head: "b".repeat(40),
+        head_time: "2026-05-14T00:00:00.000Z"
+      };
+    },
+    async remoteHead(): Promise<string> {
+      return "b".repeat(40);
+    },
+    async isClean(): Promise<boolean> {
+      return true;
+    }
   };
 }
 
@@ -179,6 +233,29 @@ describe("RepoService", () => {
       const listed = service.list({ offset: 0, limit: 10 });
       expect(listed.repos[0]?.kind).toBe("open-source");
     });
+
+    it("infers scan_config for the known Claude plugin marketplace repo", async () => {
+      const marketplaceService = new RepoService({
+        db,
+        config: buildConfig(dataDir.path),
+        events,
+        locks,
+        logger: nullLogger(),
+        gitImpl: makeMarketplaceGit()
+      });
+
+      const result = await marketplaceService.register({
+        git_url: "https://github.com/anthropics/claude-plugins-official.git",
+        kind: RepoKind.OpenSource
+      });
+
+      expect(result.repo.scan_config).toEqual(CLAUDE_PLUGINS_OFFICIAL_SCAN_CONFIG);
+      expect(result.skills.map((s) => `${s.type}/${s.name}`).sort()).toEqual([
+        "agent/playwright/runner",
+        "command/code-review/code-review"
+      ]);
+      expect(result.command_count).toBe(1);
+    });
   });
 
   // ---------- refresh ----------
@@ -217,6 +294,49 @@ describe("RepoService", () => {
       const refreshed = await service.refresh(result.repo.id);
       expect(refreshed.changed).toBe(false);
       expect(refreshed.repo.head_hash).toBe(result.repo.head_hash);
+    });
+
+    it("self-heals null scan_config for legacy Claude plugin marketplace rows", async () => {
+      const localPath = path.join(
+        dataDir.path,
+        "repos",
+        "claude-plugins-official"
+      );
+      writeMarketplaceFixture(localPath);
+      const repos = new RepoRepository(db);
+      const legacy = repos.insert({
+        name: "claude-plugins-official",
+        git_url: "git@github.com:anthropics/claude-plugins-official.git",
+        kind: RepoKind.OpenSource,
+        local_path: localPath,
+        scan_config: null
+      });
+      repos.updateSyncState(legacy.id, {
+        head_hash: "a".repeat(40),
+        last_synced: "2026-05-13T00:00:00.000Z"
+      });
+
+      const marketplaceService = new RepoService({
+        db,
+        config: buildConfig(dataDir.path),
+        events,
+        locks,
+        logger: nullLogger(),
+        gitImpl: makeMarketplaceGit()
+      });
+
+      const refreshed = await marketplaceService.refresh(legacy.id);
+
+      expect(refreshed.repo.scan_config).toEqual(
+        CLAUDE_PLUGINS_OFFICIAL_SCAN_CONFIG
+      );
+      expect(repos.findById(legacy.id)?.scan_config).toEqual(
+        CLAUDE_PLUGINS_OFFICIAL_SCAN_CONFIG
+      );
+      expect(refreshed.skills.map((s) => `${s.type}/${s.name}`).sort()).toEqual([
+        "agent/playwright/runner",
+        "command/code-review/code-review"
+      ]);
     });
 
     it("removes skills that disappeared upstream", async () => {

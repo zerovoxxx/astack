@@ -206,8 +206,17 @@ test.describe("project detail — keyboard tab nav", () => {
     const project = await registerProject(request, projectDir);
     await page.goto(`/projects/${project.id}`);
 
+    // Tab order is: Subscriptions → Local Skills → Linked Dirs → Sync
+    // History → Harness. Two ArrowRight presses move focus from
+    // Subscriptions to Linked Dirs. We wait for the intermediate
+    // selection so the second key press lands on the freshly-focused
+    // tablist after React has flushed the re-render (otherwise the
+    // keypress can race the focus move and never advance).
     const subsTab = page.getByRole("tab", { name: /Subscriptions/ });
     await subsTab.focus();
+    await page.keyboard.press("ArrowRight");
+    const localSkillsTab = page.getByRole("tab", { name: /Local Skills/ });
+    await expect(localSkillsTab).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("ArrowRight");
 
     const toolsTab = page.getByRole("tab", { name: /Linked Dirs/ });

@@ -21,7 +21,6 @@ import { ProjectsPage } from "./pages/ProjectsPage.js";
 import { ReposPage } from "./pages/ReposPage.js";
 import { ResolvePage } from "./pages/ResolvePage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
-import { SkillMatrixPage } from "./pages/SkillMatrixPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 
 export function App(): React.JSX.Element {
@@ -35,7 +34,6 @@ export function App(): React.JSX.Element {
               <Route path="/repos" element={<ReposPage />} />
               <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/projects/:id" element={<ProjectDetailPage />} />
-              <Route path="/matrix" element={<SkillMatrixPage />} />
               <Route
                 path="/resolve/:project_id/:skill_id"
                 element={<ResolvePage />}

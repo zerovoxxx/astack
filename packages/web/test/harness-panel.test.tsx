@@ -210,26 +210,27 @@ describe("HarnessPanel", () => {
     mountHarness();
     await waitFor(() => expect(screen.getByText("Installed")).toBeInTheDocument());
 
-    // The header always mentions /init_harness (namespace explainer), but
-    // the Instructions block — identified by its "Prerequisite" note —
-    // must not be visible before the toggle.
+    // The header always mentions /init_harness (namespace explainer),
+    // but the Instructions block — identified by the slash-command code
+    // chip rendered alongside the Copy button — must not be visible
+    // before the toggle.
     expect(
-      screen.queryByRole("note", { name: /prerequisite/i })
+      screen.queryByRole("button", { name: /^Copy$/ })
     ).not.toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: /show instructions/i })
     );
 
-    // The instructions block is now visible.
-    const prereq = screen.getByRole("note", { name: /prerequisite/i });
-    expect(prereq).toBeInTheDocument();
-    // It calls out that /init_harness is a subscribable command, not a
-    // bundled entry point. The prose spans multiple elements (<code>,
-    // <span>), so match against the concatenated textContent.
-    const prereqText = prereq.textContent ?? "";
-    expect(prereqText).toMatch(/not\s+bundled with astack/i);
-    expect(prereqText.toLowerCase()).toContain("subscriptions");
+    // The instructions block is now visible: Copy button + the slash
+    // command chip + the do-not-run-the-shell-script disclaimer.
+    expect(
+      screen.getByRole("button", { name: /^Copy$/ })
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("/init_harness").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/do not run the underlying shell script by hand/i)
+    ).toBeInTheDocument();
     // Must NOT advertise the raw shell command any more.
     expect(screen.queryByText(/init-harness\.sh/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/bash .*init-harness/i)).not.toBeInTheDocument();
