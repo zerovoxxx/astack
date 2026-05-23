@@ -1,0 +1,16 @@
+{
+  "pipelines": [
+    {
+      "name": "Dashboard Backend 部署",
+      "project": "lct-hippy-app",
+      "pipelineId": "p-2089af7c88fe43ad9b3028919379a72f",
+      "url": "https://devops.woa.com/console/pipeline/lct-hippy-app/p-2089af7c88fe43ad9b3028919379a72f",
+      "params": {
+        "tag": "tag名称",
+        "branch": "分支名称",
+        "BK_CI_BUILD_MSG": "构建描述"
+      },
+      "status": "ready"
+    }
+  ]
+}

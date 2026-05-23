@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "description": "iWiki 文档同步配置文件（纯配置，历史记录已迁移至 iwiki_history.md）",
+  "mcp_server": {
+    "url": "https://prod.mcp.it.woa.com/app_iwiki_mcp/mcp3",
+    "headers": {
+      "Authorization": "Bearer tai_pat_Deq_W3TqCRcbk-oVt3fhOqZBhfhSt7Yzehi4HN2O44w.3bSj5wlTv6kjhTeZlKIjNnbAP8hrRZsnfoX-jCZ84C8"
+    }
+  },
+  "iwiki_space": {
+    "space_key": "CDGFiTWMDRDCE",
+    "space_id": 121012386,
+    "space_name": "FIT财富研发中心"
+  },
+  "paths": {
+    "docs_dir": "docs",
+    "history_file": "iwiki_history.md"
+  },
+  "directory_mapping": {
+    "01_product_design": {
+      "parent_id": 4017836108,
+      "description": "01 产品方案文档",
+      "enabled": true
+    },
+    "02_system_design": {
+      "parent_id": 4017836217,
+      "description": "02 技术方案文档",
+      "enabled": true
+    },
+    "03_feature_process": {
+      "parent_id": 4017836226,
+      "description": "03 特性迭代文档",
+      "enabled": true
+    },
+    "04_unified_knowledge": {
+      "parent_id": 4017836234,
+      "description": "04 业务知识文档",
+      "enabled": true
+    },
+    "06_experience-doc": {
+      "parent_id": 4017836243,
+      "description": "05 工具经验沉淀",
+      "enabled": true
+    },
+    "product": {
+      "parent_id": 4018908513,
+      "description": "产品介绍与评估材料",
+      "enabled": true
+    }
+  }
+}

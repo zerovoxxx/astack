@@ -1,0 +1,7 @@
+# Do NOT ignore doc_mapping.json - it's critical for tracking document IDs
+# !doc_mapping.json
+
+# Ignore temporary files
+*.pyc
+__pycache__/
+.DS_Store

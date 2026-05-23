@@ -9,6 +9,10 @@
 # 模板来源：与本脚本同目录的 ../templates/*.tpl
 # 占位符：{{PROJECT_NAME}}、{{PROJECT_DESC}}（仅 AGENTS.md.tpl 使用）
 #
+# 副作用：创建 AGENTS.md 后，同时建立 CLAUDE.md → AGENTS.md 软链，
+#         让 Claude / Cursor / Codebuddy 等工具共享同一份治理入口。
+#         三种模式（fresh / migrate / patch）下均会幂等确保该软链存在。
+#
 # 用法:
 #   bash <skill-dir>/scripts/init-harness.sh [选项]
 #
@@ -16,7 +20,7 @@
 #   --name <项目名>     项目名称（不提供则交互式询问，仅 fresh 模式需要）
 #   --desc <描述>       一句话项目描述（仅 fresh 模式需要）
 #   --dry-run           只输出计划，不实际修改
-#   --force             覆盖已存在的治理文档
+#   --force             覆盖已存在的治理文档（含 CLAUDE.md 非预期软链）
 #   --help              显示帮助
 
 set -euo pipefail
@@ -48,7 +52,7 @@ while [[ $# -gt 0 ]]; do
         --dry-run) DRY_RUN=true; shift ;;
         --force) FORCE=true; shift ;;
         --help)
-            head -22 "$0" | tail -20
+            head -26 "$0" | tail -24
             exit 0
             ;;
         *) echo "未知参数: $1 (运行 --help 查看用法)"; exit 1 ;;
@@ -93,6 +97,58 @@ render_template() {
 
     CREATED_FILES+=("$target")
     success "创建 $target"
+}
+
+# 幂等确保 CLAUDE.md → AGENTS.md 软链存在
+# 设计要点：
+#   - 仅在当前目录已存在 AGENTS.md（或软链）时创建，避免空链
+#   - 已是正确软链时静默跳过（idempotent）
+#   - 已是其它软链或普通文件时默认跳过；--force 才覆盖
+#   - 尊重 --dry-run
+ensure_claude_md_symlink() {
+    if [ ! -f "AGENTS.md" ] && [ ! -L "AGENTS.md" ]; then
+        warn "AGENTS.md 不存在，跳过 CLAUDE.md 软链创建"
+        return
+    fi
+
+    if [ -L "CLAUDE.md" ]; then
+        local current_target
+        current_target="$(readlink CLAUDE.md)"
+        if [ "$current_target" = "AGENTS.md" ]; then
+            info "CLAUDE.md → AGENTS.md 软链已存在，跳过"
+            return
+        fi
+        warn "CLAUDE.md 已是软链但指向 '$current_target'（非 AGENTS.md）"
+        if [ "$FORCE" != true ]; then
+            warn "  跳过（使用 --force 覆盖）"
+            return
+        fi
+        if [ "$DRY_RUN" = true ]; then
+            info "[dry-run] 将删除并重建 CLAUDE.md → AGENTS.md"
+            return
+        fi
+        rm -f "CLAUDE.md"
+    elif [ -e "CLAUDE.md" ]; then
+        warn "CLAUDE.md 已存在为普通文件（非软链）"
+        if [ "$FORCE" != true ]; then
+            warn "  跳过（使用 --force 覆盖；请自行备份）"
+            return
+        fi
+        if [ "$DRY_RUN" = true ]; then
+            info "[dry-run] 将删除并替换为 CLAUDE.md → AGENTS.md 软链"
+            return
+        fi
+        rm -f "CLAUDE.md"
+    fi
+
+    if [ "$DRY_RUN" = true ]; then
+        info "[dry-run] 将创建软链 CLAUDE.md → AGENTS.md"
+        return
+    fi
+
+    ln -s AGENTS.md CLAUDE.md
+    CREATED_FILES+=("CLAUDE.md (软链 → AGENTS.md)")
+    success "创建软链 CLAUDE.md → AGENTS.md"
 }
 
 # ── 状态检测 ──
@@ -197,6 +253,15 @@ fi
 
 echo ""
 
+# ── 2.5. 创建 CLAUDE.md → AGENTS.md 软链 ──
+# 三种模式都执行：fresh 刚渲染完 AGENTS.md，migrate / patch 也补齐老项目缺失的软链。
+# 让 Claude / Cursor / Codebuddy 等工具共享同一份治理入口。
+
+action "确保 CLAUDE.md → AGENTS.md 软链"
+ensure_claude_md_symlink
+
+echo ""
+
 # ── 3-6. 从模板渲染治理文档（仅缺失时） ──
 
 [ "$HAS_INDEX_MD" = false ]       && action "创建 docs/version/INDEX.md"       && render_template "INDEX.md.tpl"       "docs/version/INDEX.md"       || true
@@ -274,6 +339,7 @@ fi
 echo ""
 echo "项目结构:"
 echo "  ."
+[ -L "CLAUDE.md" ] && echo "  ├── CLAUDE.md → AGENTS.md"
 [ -f "AGENTS.md" ] && echo "  ├── AGENTS.md"
 echo "  └── docs/"
 echo "      ├── version/"
