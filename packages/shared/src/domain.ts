@@ -272,6 +272,12 @@ function normalizeGitHubRepoSlug(gitUrl: string): string | null {
  * Shared by server (`BUILTIN_SEEDS` rich config) and web (displays a
  * "Built-in" tag on those repos). Both read from here so the set stays
  * in sync.
+ *
+ * Distinct from `INLINE_SKILL_REPO_URL` below: those listed here are
+ * cloned over the network by `SeedService`; the inline repo lives in
+ * the project tree and is bootstrapped by `InlineSkillRepoService`
+ * without any git operation. Both flavours render as BUILT-IN in the
+ * dashboard (see `isBuiltinRepoUrl`).
  */
 export const BUILTIN_SEED_URLS: readonly string[] = [
   "https://github.com/anthropics/skills.git",
@@ -279,9 +285,33 @@ export const BUILTIN_SEED_URLS: readonly string[] = [
   "https://github.com/affaan-m/everything-claude-code.git"
 ];
 
+/**
+ * Synthetic git_url for the inline (no-clone) bundled skill repo
+ * `<workspace>/astack-skills/`. Registered on every daemon start by
+ * `InlineSkillRepoService.bootstrap()`. Never collides with a real
+ * git URL because of the `inline:` scheme prefix.
+ */
+export const INLINE_SKILL_REPO_URL = "inline:astack-skills";
+
 /** True iff the given git URL matches one of the builtin seed URLs. */
 export function isBuiltinSeedUrl(url: string): boolean {
   return BUILTIN_SEED_URLS.includes(url);
+}
+
+/**
+ * True iff the given URL corresponds to ANY astack-shipped repo:
+ *
+ *   - one of `BUILTIN_SEED_URLS` (cloned by SeedService), OR
+ *   - `INLINE_SKILL_REPO_URL` (bootstrapped by InlineSkillRepoService).
+ *
+ * Use this (instead of `isBuiltinSeedUrl`) when the question is "did
+ * astack ship this repo?" — e.g. for the dashboard BUILT-IN tag and
+ * sort-to-top behavior. Stick with `isBuiltinSeedUrl` only when the
+ * question is specifically about the SeedService clone path (e.g.
+ * persisting a "user removed this seed" decision).
+ */
+export function isBuiltinRepoUrl(url: string): boolean {
+  return isBuiltinSeedUrl(url) || url === INLINE_SKILL_REPO_URL;
 }
 
 /** A registered skill git repository (the "upstream mirror" source). */

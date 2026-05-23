@@ -17,3 +17,9 @@
 | v0.4 | Harness Tab + 系统级 Skill 首次落地 | SHIPPED | [Iteration3_HarnessTab_SPEC.md](./Iteration3_HarnessTab_SPEC.md) | 2026-04-20 |
 | v0.3 | 项目详情页重设计 + Web 端完整管理能力 | SHIPPED | [Iteration2_ProjectDetailRedesign_SPEC.md](./Iteration2_ProjectDetailRedesign_SPEC.md) | 2026-04-20 |
 | v0.2 | sqlite 换底 + 多仓库目录兼容 | SHIPPED | [Iteration1_SqliteAndMultiRepo_SPEC.md](./Iteration1_SqliteAndMultiRepo_SPEC.md) | 2026-04-19 |
+
+## 变更记录
+
+| 日期 | 版本 | 作者 | 摘要 |
+|------|------|------|------|
+| 2026-05-23 | v0.12 | AI | feat(server)：astack-skills 内联仓库 daemon 启动自扫（6 测），harness-init 迁至 astack-skills。 |

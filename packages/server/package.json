@@ -8,8 +8,7 @@
     "astack-server": "./dist/bin.js"
   },
   "files": [
-    "dist",
-    "system-skills"
+    "dist"
   ],
   "scripts": {
     "build": "tsc -b",

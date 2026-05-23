@@ -31,6 +31,7 @@ import type { ServerConfig } from "./config.js";
 import { openDatabase } from "./db/connection.js";
 import { createApp, type AppInstance } from "./http/app.js";
 import { createLogger, type Logger, type LogLevel } from "./logger.js";
+import { InlineSkillRepoService } from "./services/inline-skill-repo.js";
 import { SeedService } from "./services/seed.js";
 
 export interface DaemonHandle {
@@ -146,6 +147,28 @@ export async function startDaemon(
   );
 
   writePidFile(config, process.pid);
+
+  // v0.12: dynamically (re-)parse the bundled inline skill repo
+  // `<workspace>/astack-skills/`. This runs SYNCHRONOUSLY before the
+  // background seed pass so the inline repo's skills (`commands/`,
+  // `agents/`, `skills/` minus the system-skill blacklist) are already
+  // queryable when the first dashboard request lands. No network or
+  // git ops are involved — `astack-skills/` lives in the project tree —
+  // so blocking startup on it is cheap (~10ms for ~10 files).
+  //
+  // Failures are swallowed inside `bootstrap()` itself so a corrupt
+  // inline repo can never take the daemon down; the daemon would just
+  // come up missing whichever inline-repo skills failed to scan, and
+  // the harness-init system-skill path stays unaffected (it has its
+  // own resolver in `SystemSkillService.loadRegistry`).
+  const inlineSkillRepoService = new InlineSkillRepoService({
+    db: app.container.db,
+    events: app.container.events,
+    logger,
+    systemSkillIds: () =>
+      new Set(app.container.systemSkillService.list().map((s) => s.id))
+  });
+  inlineSkillRepoService.bootstrap();
 
   // Kick off builtin-seed bootstrap in the background. The HTTP server
   // is already listening at this point, so users see a responsive

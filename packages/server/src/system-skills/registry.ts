@@ -8,9 +8,12 @@
  * here. When we add a second system skill, revisit: if the registry
  * exceeds ~3 entries or needs dynamic metadata, switch to parsing.
  *
- * IDs MUST equal the subdirectory name under `packages/server/system-skills/`.
- * The scanner (A9) uses these IDs as a blacklist to exclude same-named
- * skills from user-imported repos.
+ * IDs MUST equal the subdirectory name under `<astack-skills>/skills/`
+ * (resolved by `systemSkillsRoot()` in v0.12+ — previously this was
+ * `packages/server/system-skills/`). The scanner (A9) uses these IDs
+ * as a blacklist to exclude same-named skills from user-imported
+ * repos AND from the inline-skill-repo scan, so users cannot
+ * accidentally double-expose harness-init through the marketplace UI.
  */
 
 export interface SystemSkillDescriptor {

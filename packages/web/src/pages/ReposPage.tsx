@@ -28,7 +28,7 @@ import type * as React from "react";
  */
 
 import type { RepoKind, Skill, SkillRepo } from "@astack/shared";
-import { isBuiltinSeedUrl } from "@astack/shared";
+import { INLINE_SKILL_REPO_URL, isBuiltinRepoUrl } from "@astack/shared";
 import {
   useCallback,
   useEffect,
@@ -305,7 +305,7 @@ export function ReposPage(): React.JSX.Element {
         </EmptyState>
       ) : (
         <div className="space-y-2">
-          {repos.map((r) => (
+          {sortReposForDisplay(repos).map((r) => (
             <RepoCard
               key={r.id}
               repo={r}
@@ -434,36 +434,66 @@ function RepoCard({
           className="absolute inset-0 w-full rounded-lg focus-visible:ring-2 focus-visible:ring-accent/60"
         />
 
-        <div className="relative pointer-events-none flex items-start justify-between gap-4 px-5 py-4">
-          {/* Title + metadata column */}
+        {/* v0.13 compact header — two-row layout (re-revised from the
+            single-row attempt):
+              Row 1 — chevron + repo name + provenance/ownership tags.
+              Row 2 — meta facts joined by `·` (read-only / counts /
+                       hash / synced / URL). URL is the truncate target.
+            Actions stay on the right, vertically centered against the
+            whole left stack. Padding tightened (py-4 → py-3) so the two
+            rows still feel denser than the original 4-row design.  */}
+        <div className="relative pointer-events-none flex items-center justify-between gap-4 px-4 py-3">
           <div className="min-w-0 flex-1">
+            {/* Row 1: name + tags */}
             <div className="flex items-center gap-2 min-w-0">
               <Chevron open={expanded} />
-              <span className="text-lg font-semibold text-fg-primary truncate min-w-0">
+              <span className="text-base font-semibold text-fg-primary truncate min-w-0">
                 {repo.name}
               </span>
               <RepoSourceTag repo={repo} />
             </div>
 
-            <div className="mt-1 ml-[22px] flex items-center gap-3 text-xs text-fg-tertiary">
+            {/* Row 2: meta facts. Indented to align with the repo name
+                (chevron is 14px + 8px gap = 22px). */}
+            <div className="mt-1 ml-[22px] flex items-center gap-2 text-xs text-fg-tertiary min-w-0">
               {repo.kind === "open-source" ? (
                 <InlineTag tone="hollow">read-only</InlineTag>
               ) : (
                 <InlineTag tone="accent">two-way sync</InlineTag>
               )}
-              <span className="text-fg-quaternary">·</span>
+              <MetaSep />
               <SkillCounts counts={counts} loading={skillsState?.loading} />
-            </div>
-
-            <div className="mt-3 ml-[22px] text-xs font-mono text-fg-tertiary truncate">
-              {stripGitHubPrefix(repo.git_url)}
-            </div>
-            <div className="mt-0.5 ml-[22px] text-xs text-fg-tertiary tabular flex items-center gap-2">
-              <span className="font-mono text-fg-secondary">
-                {shortHash(repo.head_hash) || "—"}
+              {/* Hash + synced time are git-state facts; suppress for
+                  repos that have neither (notably the inline
+                  `astack-skills` repo, whose v0.12 bootstrap intentionally
+                  skips `git rev-parse`). Rendering `— · synced —` was
+                  pure noise on those rows. */}
+              {repo.head_hash ? (
+                <>
+                  <MetaSep />
+                  <span className="font-mono text-fg-secondary tabular whitespace-nowrap">
+                    {shortHash(repo.head_hash)}
+                  </span>
+                </>
+              ) : null}
+              {repo.last_synced ? (
+                <>
+                  <MetaSep />
+                  <span className="tabular whitespace-nowrap">
+                    {relativeTime(repo.last_synced)}
+                  </span>
+                </>
+              ) : null}
+              <MetaSep />
+              {/* URL is the flexible truncate target: `flex-1 min-w-0`
+                  lets it absorb the leftover row width and ellipsize at
+                  narrow viewports. Full URL kept on hover via `title`. */}
+              <span
+                className="flex-1 min-w-0 font-mono truncate text-left"
+                title={repo.git_url}
+              >
+                {stripGitHubPrefix(repo.git_url)}
               </span>
-              <span className="text-fg-quaternary">·</span>
-              <span>synced {relativeTime(repo.last_synced)}</span>
             </div>
           </div>
 
@@ -533,6 +563,19 @@ function RepoCard({
   );
 }
 
+/**
+ * Inline middle-dot separator used between meta facts on the compact
+ * single-row card header. Extracted so the dot's color + size stays
+ * consistent at every site (and the JSX above stays readable).
+ */
+function MetaSep(): React.JSX.Element {
+  return (
+    <span aria-hidden className="text-fg-quaternary whitespace-nowrap">
+      ·
+    </span>
+  );
+}
+
 function Chevron({ open }: { open: boolean }): React.JSX.Element {
   return (
     <svg
@@ -579,7 +622,11 @@ function Chevron({ open }: { open: boolean }): React.JSX.Element {
  * the seeded repos are also read-only.
  */
 function RepoSourceTag({ repo }: { repo: SkillRepo }): React.JSX.Element {
-  const isBuiltin = isBuiltinSeedUrl(repo.git_url);
+  // `isBuiltinRepoUrl` covers BOTH the cloned seed URLs and the inline
+  // `inline:astack-skills` URL — v0.12 promoted the bundled skills dir
+  // to a first-class inline repo, and it deserves the same provenance
+  // claim as the github-hosted seeds.
+  const isBuiltin = isBuiltinRepoUrl(repo.git_url);
   const isOpenSource = repo.kind === "open-source";
 
   return (
@@ -636,6 +683,41 @@ function stripGitHubPrefix(url: string): string {
     .replace(/^https?:\/\//, "")
     .replace(/^git@/, "")
     .replace(/\.git$/, "");
+}
+
+/**
+ * Three-tier sort for the Repos list:
+ *
+ *   1. The inline `astack-skills` repo is force-pinned to the top.
+ *      It's the project's "home" repo (ships harness-init, owns the
+ *      default skill/command/agent set), so users should see it
+ *      regardless of insertion order in the DB.
+ *
+ *   2. Other BUILT-IN repos (the three cloned seeds) come next, kept
+ *      in insertion order (which is also `BUILTIN_SEEDS` array order).
+ *
+ *   3. User-registered repos go last, in insertion order.
+ *
+ * Within each tier we tiebreak by `id` (ascending) so the rendering
+ * stays stable across refreshes.
+ *
+ * This is presentational only — the API still returns rows ordered by
+ * `id`, and any consumer that wants the raw order (CLI, tests) is
+ * unaffected.
+ */
+function sortReposForDisplay(
+  repos: ReadonlyArray<SkillRepo>
+): SkillRepo[] {
+  const tier = (r: SkillRepo): number => {
+    if (r.git_url === INLINE_SKILL_REPO_URL) return 0;
+    if (isBuiltinRepoUrl(r.git_url)) return 1;
+    return 2;
+  };
+  return [...repos].sort((a, b) => {
+    const t = tier(a) - tier(b);
+    if (t !== 0) return t;
+    return a.id - b.id;
+  });
 }
 
 // ---------- Skill counts + list ----------

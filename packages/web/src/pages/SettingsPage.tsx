@@ -47,13 +47,13 @@ export function SettingsPage(): React.JSX.Element {
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-text-secondary">Daemon</h2>
-        <Card>
+        <Card className="px-4 py-3">
           {error ? (
             <div className="text-sm text-error">{error}</div>
           ) : !health ? (
             <div className="text-sm text-text-muted">Probing…</div>
           ) : (
-            <dl className="text-sm grid grid-cols-[140px_1fr] gap-y-1">
+            <dl className="text-sm grid grid-cols-[140px_1fr] gap-y-1.5">
               <dt className="text-text-muted">Version</dt>
               <dd className="font-mono">{health.version}</dd>
               <dt className="text-text-muted">Status</dt>
@@ -75,8 +75,8 @@ export function SettingsPage(): React.JSX.Element {
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-text-secondary">Keyboard</h2>
-        <Card>
-          <dl className="text-sm grid grid-cols-[140px_1fr] gap-y-1">
+        <Card className="px-4 py-3">
+          <dl className="text-sm grid grid-cols-[140px_1fr] gap-y-2 items-center">
             <dt>
               <Kbd>⌘K</Kbd>
             </dt>
@@ -99,7 +99,7 @@ export function SettingsPage(): React.JSX.Element {
 
       <section className="space-y-2">
         <h2 className="text-sm font-medium text-text-secondary">About</h2>
-        <Card className="text-sm text-text-secondary">
+        <Card className="px-4 py-3 text-sm text-text-secondary">
           <div>Astack — AI Harness System.</div>
           <div className="text-text-muted text-xs mt-1">
             Dashboard served by the local daemon at 127.0.0.1:7432.

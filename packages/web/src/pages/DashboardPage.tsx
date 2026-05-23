@@ -185,18 +185,25 @@ export function DashboardPage(): React.JSX.Element {
 }
 
 function MatrixGrid({ data }: { data: MatrixData }): React.JSX.Element {
+  // Sticky cells require:
+  //   1. border-separate (border-collapse:collapse breaks horizontal sticky
+  //      on <td>/<th> in Chromium/WebKit — long-standing engine bug).
+  //   2. Opaque backgrounds — the design system's `bg-surface` token is
+  //      translucent (rgba alpha 0.025), so scrolling content shows through
+  //      and visually defeats the freeze. We use the opaque `bg-canvas`
+  //      token (and `bg-overlay` for hover) on every frozen cell.
   return (
     <Card className="p-0 overflow-auto">
-      <table className="w-full text-xs border-collapse">
+      <table className="w-full text-xs border-separate border-spacing-0">
         <thead>
           <tr>
-            <th className="sticky top-0 left-0 z-20 bg-surface border-r border-b border-border text-left px-3 py-2 font-normal text-text-muted">
+            <th className="sticky top-0 left-0 z-30 bg-canvas border-r border-b border-border text-left px-3 py-2 font-normal text-text-muted">
               Project
             </th>
             {data.columns.map((col) => (
               <th
                 key={col.skill.id}
-                className="sticky top-0 z-10 bg-surface border-b border-border px-2 py-2 font-normal text-text-muted whitespace-nowrap"
+                className="sticky top-0 z-20 bg-canvas border-b border-border px-2 py-2 font-normal text-text-muted whitespace-nowrap"
                 title={`${col.repo}/${col.skill.name}`}
               >
                 <div className="font-mono text-text-primary">
@@ -212,7 +219,7 @@ function MatrixGrid({ data }: { data: MatrixData }): React.JSX.Element {
             const row = data.cells.get(p.id) ?? new Map();
             return (
               <tr key={p.id} className="group">
-                <td className="sticky left-0 z-10 bg-surface border-r border-b border-border px-3 py-2 whitespace-nowrap group-hover:bg-elevated">
+                <td className="sticky left-0 z-10 bg-canvas border-r border-b border-border px-3 py-2 whitespace-nowrap group-hover:bg-overlay">
                   <Link to={`/projects/${p.id}`} className="hover:text-accent">
                     {p.name}
                   </Link>

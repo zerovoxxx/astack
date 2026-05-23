@@ -50,11 +50,21 @@ export {
   type SeedSummary
 } from "./services/seed.js";
 export {
+  InlineSkillRepoService,
+  INLINE_SKILL_REPO_GIT_URL,
+  INLINE_SKILL_REPO_NAME,
+  type InlineSkillRepoServiceDeps,
+  type InlineSkillRepoBootstrapResult
+} from "./services/inline-skill-repo.js";
+export {
   SystemSkillService,
   safeLog,
   type SystemSkillServiceDeps
 } from "./system-skills/service.js";
-export { systemSkillsRoot } from "./system-skills/paths.js";
+export {
+  systemSkillsRoot,
+  astackSkillsRepoRoot
+} from "./system-skills/paths.js";
 export {
   SYSTEM_SKILLS,
   SYSTEM_SKILL_IDS,
