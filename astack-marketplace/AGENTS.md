@@ -33,8 +33,7 @@ The default shipped plugin is `astack-workflow`.
 │       │   ├── spec/
 │       │   ├── plan/
 │       │   ├── dev/
-│       │   ├── mr/
-│       │   └── spec-declutter/
+│       │   └── ship/
 │       └── scripts/
 │           └── spec-lint.sh
 ├── CHANGELOG.md
@@ -45,18 +44,18 @@ Component directories must live at the plugin root, not inside `.claude-plugin/`
 
 ## 3. Workflow Policy
 
-Keep one best-practice Spec workflow:
+Keep exactly four core workflow skills:
 
 ```text
-/astack-workflow:harness-init -> /astack-workflow:spec -> /astack-workflow:dev -> /astack-workflow:mr
+/astack-workflow:spec -> /astack-workflow:plan -> /astack-workflow:dev -> /astack-workflow:ship
 ```
 
-- `harness-init`: initialize or migrate project governance files.
-- `spec`: create or update a lightweight iteration SPEC.
-- `plan`: split a large SPEC into executable tasks.
-- `dev`: implement from a SPEC or PLAN and record verification evidence.
-- `mr`: prepare merge-request state with fresh verification.
-- `spec-declutter`: archive completed SPEC files when the active view is crowded.
+- `spec`: think through what to build.
+- `plan`: split complex work into executable tasks.
+- `dev`: implement from the request, SPEC, or PLAN and record verification evidence.
+- `ship`: run fresh verification, commit, and push.
+
+`harness-init` is kept as an initialization utility for project governance files. It is not a core workflow phase.
 
 Do not reintroduce default slash-command files. Claude Code and the Astack scanner support `commands/`, but this marketplace uses `skills/` for new workflow components.
 

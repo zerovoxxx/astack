@@ -13,7 +13,7 @@ description: |
 - `AGENTS.md`：项目导航和少量硬规则
 - `docs/version/INDEX.md`：版本 / 迭代 / SPEC 的索引和短变更记录
 
-每个迭代的目标、边界、设计、验收和复盘都优先写在对应 `Iteration<N>_<Slug>_SPEC.md` 中。默认不创建 `BOUNDARIES.md`、`docs/retro/*`、`*_REVIEW.md`、`*_CR.md` 等 sidecar。
+每个迭代的目标、边界、设计、验收和重要结论都优先写在对应 `Iteration<N>_<Slug>_SPEC.md` 中。默认不创建 `BOUNDARIES.md`、`docs/retro/*`、`*_REVIEW.md`、`*_CR.md` 等 sidecar。
 
 ## 何时使用
 
@@ -106,10 +106,11 @@ bash astack-marketplace/plugins/astack-workflow/skills/harness-init/scripts/init
 | Skill | 作用 | 依赖文件 |
 |---|---|---|
 | `/astack-workflow:spec` | 创建或更新迭代 SPEC | `AGENTS.md`、`docs/version/INDEX.md` |
+| `/astack-workflow:plan` | 拆开复杂任务 | SPEC、项目代码 |
 | `/astack-workflow:dev` | 按 SPEC / PLAN 实施 | SPEC / PLAN、项目代码 |
-| `/astack-workflow:mr` | 提交前验证、状态流转、更新 INDEX | `docs/version/INDEX.md` |
+| `/astack-workflow:ship` | 验证、提交、推送 | `docs/version/INDEX.md`、git 状态 |
 
-**默认工作流只有 `/astack-workflow:spec → /astack-workflow:dev → /astack-workflow:mr` 三个核心 skill。** 其他评审、复盘或专项报告只在用户明确要求时临时创建，不作为脚手架基础设施。
+**默认工作流只有 `/astack-workflow:spec → /astack-workflow:plan → /astack-workflow:dev → /astack-workflow:ship` 四个核心 skill。** 其他评审、复盘或专项报告只在用户明确要求时临时创建，不作为脚手架基础设施。
 
 ## 参考文件
 

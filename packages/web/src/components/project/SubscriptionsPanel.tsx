@@ -256,7 +256,7 @@ function EmptyState({ onBrowse }: { onBrowse: () => void }): React.JSX.Element {
  *
  * Rationale (v0.7 fix):
  *   Users were confused when commands (e.g. `init_harness`, `code_review`,
- *   `dev`, `mr`, `spec`) appeared in the same table as skills (e.g.
+ *   `dev`, `ship`, `spec`) appeared in the same table as skills (e.g.
  *   `code-simplifier`, `iwiki`). The old row renderer only showed a `dir`
  *   badge for skills and a `agent` badge for agents — commands had no
  *   badge, making them visually indistinguishable from skills on scan.

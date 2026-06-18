@@ -28,8 +28,7 @@ Installed skills are namespaced by plugin:
 /astack-workflow:spec
 /astack-workflow:plan
 /astack-workflow:dev
-/astack-workflow:mr
-/astack-workflow:spec-declutter
+/astack-workflow:ship
 ```
 
 ## Structure

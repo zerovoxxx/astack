@@ -1,6 +1,6 @@
 # 迭代状态总表
 
-> 所有迭代的状态追踪。由 `/astack-workflow:spec` 和 `/astack-workflow:mr` 维护。
+> 所有迭代的状态追踪。由 `/astack-workflow:spec` 和 `/astack-workflow:ship` 维护。
 
 | 迭代 | 标题 | 状态 | 文档 | 创建日期 |
 |------|------|------|------|---------|

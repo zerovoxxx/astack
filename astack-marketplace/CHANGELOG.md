@@ -9,14 +9,15 @@
 - **Marketplace protocol migration**：目录从 `astack-skills/` 迁移为 `astack-marketplace/`，新增 `.claude-plugin/marketplace.json` 与 `plugins/astack-workflow/.claude-plugin/plugin.json`，按 Claude Code plugin marketplace 协议发布。
 - **Codex plugin protocol support**：新增 `.agents/plugins/marketplace.json` 与 `plugins/astack-workflow/.codex-plugin/plugin.json`，同一个 `astack-workflow` plugin 同时支持 Claude Code 与 Codex marketplace。
 - **单插件收敛**：默认交付形态收敛为 `astack-workflow` plugin，内部只保留轻量 Spec 工作流 skills 与同插件内脚本。
-- **Harness Spec 工作流瘦身并迁移为 Skills**：默认工作流收敛为 `spec → dev → mr` 三个核心 skill，`harness-init` 只生成 `AGENTS.md` 与 `docs/version/INDEX.md`，不再创建边界索引、retro 知识库或评审 sidecar。
-- **轻量验证门**：`spec` skill 模板新增验证计划 / 验证记录，`dev` skill 要求执行并回写验证证据，`mr` skill 仅在新鲜验证通过后流转 SPEC 完成状态。
+- **个人 AI Coding 四流程**：默认工作流收敛为 `spec → plan → dev → ship` 四个核心 skill，`harness-init` 只生成 `AGENTS.md` 与 `docs/version/INDEX.md`，不再创建边界索引、retro 知识库或评审 sidecar。
+- **轻量验证门**：`spec` skill 模板新增验证计划 / 验证记录，`dev` skill 要求执行并回写验证证据，`ship` skill 仅在新鲜验证通过后提交和推送。
 - **仓库定位收敛为 Claude Code / Codex plugin marketplace**。本仓库不再承载业务逻辑、CLI 工具或适配器实现；根目录只维护 marketplace catalog 与 `plugins/astack-workflow/` 插件源文件。
 - **`init-harness.sh` 归入 `astack-workflow` plugin**：脚本、模板与 `harness-init` skill 一起放在 `plugins/astack-workflow/skills/harness-init/`，保证 plugin 安装后不依赖仓库外部文件。
 
 ### Removed
 
-- 移除全部默认 command 资产；核心工作流已迁移为 `plugins/astack-workflow/skills/{spec,dev,mr}/`，辅助入口迁移为 `plugins/astack-workflow/skills/{plan,spec-declutter}/`。
+- 移除全部默认 command 资产；核心工作流已迁移为 `plugins/astack-workflow/skills/{spec,plan,dev,ship}/`。
+- 移除 `spec-declutter` skill；归档不再作为默认流程。
 - 移除与 Spec 主线无关的旧 skills，只保留 `astack-workflow` plugin 内的最佳 Spec 工作流。
 - 移除 `harness-init` 中的 `BOUNDARIES.md`、`golden-rules.md`、`patterns.md` 模板。
 - 移除 `claude-hub/` 子项目（TypeScript 实现的 CLI、适配器、schemas、manifest 等全部业务代码）。

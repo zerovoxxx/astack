@@ -546,7 +546,7 @@ export interface SystemSkill {
  *   - "installed"           — seed dir matches built-in AND every required
  *                             governance file exists under the project root
  *                             (see `HARNESS_SCAFFOLD_FILES`). Harness is
- *                             ready to drive the spec/dev/mr skill flow.
+ *                             ready to drive the spec/plan/dev/ship skill flow.
  *   - "scaffold_incomplete" — seed dir is fine, but one or more governance
  *                             files are missing. The user still needs to
  *                             invoke the harness-init skill in the AI tool

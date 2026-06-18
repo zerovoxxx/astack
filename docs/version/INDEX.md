@@ -1,6 +1,6 @@
 # 迭代状态总表
 
-> 所有迭代的状态追踪。由 `/astack-workflow:spec` 和 `/astack-workflow:mr` 维护。
+> 所有迭代的状态追踪。由 `/astack-workflow:spec` 和 `/astack-workflow:ship` 维护。
 >
 > **列说明**：左列 `迭代` 为业务版本号 `v<major>.<minor>`，`文档` 列链接的文件名前缀 `Iteration<N>` 为该迭代的物理序号（从 1 开始递增）。本表即版本号 ↔ 物理序号的权威映射。命名规范见 [`AGENTS.md §5`](../../AGENTS.md#5-命名规范)。
 

@@ -312,7 +312,7 @@ echo ""
 
 action "检查插件内核心 Skill 配置"
 
-REQUIRED_WORKFLOW_SKILLS=("spec" "dev" "mr")
+REQUIRED_WORKFLOW_SKILLS=("spec" "plan" "dev" "ship")
 MISSING_WORKFLOW_SKILLS=()
 
 PLUGIN_SKILLS_DIR="$(cd "$SKILL_DIR/.." && pwd)"

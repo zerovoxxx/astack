@@ -18,7 +18,7 @@
   "interface": {
     "displayName": "Astack Workflow",
     "shortDescription": "Lightweight Spec workflow with fresh verification evidence.",
-    "longDescription": "Initialize project governance, write lightweight specs, implement changes, and prepare merge requests with recorded verification evidence.",
+    "longDescription": "Initialize project governance, write lightweight specs, plan complex work, implement changes, and ship with recorded verification evidence.",
     "developerName": "zerovoxxx",
     "category": "Productivity",
     "capabilities": [

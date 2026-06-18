@@ -20,7 +20,7 @@ import {
  *
  * Displays the installation status of the system-level `harness-init` skill
  * inside this project plus the project-level lightweight Spec scaffold
- * (AGENTS.md + docs/version/INDEX.md) required by the spec/dev/mr skill flow.
+ * (AGENTS.md + docs/version/INDEX.md) required by the spec/plan/dev/ship skill flow.
  *
  * Five possible states:
  *
