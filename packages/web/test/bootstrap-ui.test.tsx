@@ -388,7 +388,7 @@ describe("SubscriptionsPanel — v0.5 integration", () => {
           },
           repo: {
             id: 1,
-            name: "astack-skills",
+            name: "astack-marketplace",
             git_url: "x",
             kind: "custom",
             status: "ready",
@@ -405,15 +405,15 @@ describe("SubscriptionsPanel — v0.5 integration", () => {
             id: 2,
             repo_id: 1,
             type: "command",
-            name: "init_harness",
-            path: "commands/init_harness.md",
+            name: "run_checks",
+            path: "commands/run_checks.md",
             description: null,
             version: "abc1234",
             updated_at: null
           },
           repo: {
             id: 1,
-            name: "astack-skills",
+            name: "astack-marketplace",
             git_url: "x",
             kind: "custom",
             status: "ready",
@@ -438,7 +438,7 @@ describe("SubscriptionsPanel — v0.5 integration", () => {
           },
           repo: {
             id: 1,
-            name: "astack-skills",
+            name: "astack-marketplace",
             git_url: "x",
             kind: "custom",
             status: "ready",
@@ -461,7 +461,7 @@ describe("SubscriptionsPanel — v0.5 integration", () => {
 
     // Each group owns exactly its own rows.
     expect(within(skillsGroup).getByText("code-simplifier")).toBeInTheDocument();
-    expect(within(commandsGroup).getByText("init_harness")).toBeInTheDocument();
+    expect(within(commandsGroup).getByText("run_checks")).toBeInTheDocument();
     expect(within(agentsGroup).getByText("reviewer")).toBeInTheDocument();
 
     // Badges are type-specific so rows stay self-identifying.
@@ -469,9 +469,9 @@ describe("SubscriptionsPanel — v0.5 integration", () => {
     expect(within(commandsGroup).getByText("cmd")).toBeInTheDocument();
     expect(within(agentsGroup).getByText("agent")).toBeInTheDocument();
 
-    // Critical anti-regression: `init_harness` must NOT appear in the Skills
+    // Critical anti-regression: `run_checks` must NOT appear in the Skills
     // group. That was the exact bug the v0.7 grouping fix is solving.
-    expect(within(skillsGroup).queryByText("init_harness")).not.toBeInTheDocument();
+    expect(within(skillsGroup).queryByText("run_checks")).not.toBeInTheDocument();
   });
 
   it("omits empty groups (no empty Commands / Agents tables shown)", () => {
@@ -491,7 +491,7 @@ describe("SubscriptionsPanel — v0.5 integration", () => {
           },
           repo: {
             id: 1,
-            name: "astack-skills",
+            name: "astack-marketplace",
             git_url: "x",
             kind: "custom",
             status: "ready",

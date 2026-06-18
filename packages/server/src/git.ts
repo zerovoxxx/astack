@@ -313,7 +313,7 @@ export interface GitLocalIdentity {
  * detail:"no_local_git_identity")` and prompts the user to run
  * `git -C <repo> config --local user.name "..."`. Silently falling
  * back to `--global` is rejected because cross-repo identity pollution
- * (e.g. astack-skills uses `zerovoxxx`, FinClaw uses `alexjhwen`) is
+ * (e.g. astack-marketplace uses `zerovoxxx`, FinClaw uses `alexjhwen`) is
  * a real footgun on this maintainer's setup.
  */
 export async function gitGetLocalIdentity(

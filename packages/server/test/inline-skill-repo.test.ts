@@ -1,13 +1,13 @@
 /**
  * Tests for InlineSkillRepoService (v0.12).
  *
- * Strategy: build a synthetic astack-skills/ tree in a tmp dir, point
- * the resolver at it via the ASTACK_SKILLS_ROOT env var, then assert:
+ * Strategy: build a synthetic astack-marketplace/ tree in a tmp dir, point
+ * the resolver at it via the ASTACK_MARKETPLACE_ROOT env var, then assert:
  *
  *   1. bootstrap() creates exactly one skill_repo row with the synthetic
  *      git_url, and the row's local_path matches our tmp dir.
- *   2. The scan filters out `harness-init` (the system-skill blacklist)
- *      while keeping the other skill / command / agent entries.
+ *   2. The scan keeps plugin-namespaced skill / command / agent entries,
+ *      including `astack-workflow/harness-init`.
  *   3. A second bootstrap() call is idempotent (no duplicate row, skills
  *      get re-scanned + upserted, no extra emissions).
  *   4. Deleting a skill from disk + re-bootstrapping prunes it from DB.
@@ -33,8 +33,18 @@ import {
 } from "../src/services/inline-skill-repo.js";
 import { _resetAstackSkillsRootCacheForTests } from "../src/system-skills/paths.js";
 
-function writeSkill(root: string, name: string, description: string): void {
-  const dir = path.join(root, "skills", name);
+function writePlugin(root: string, name: string): string {
+  const pluginRoot = path.join(root, "plugins", name);
+  fs.mkdirSync(path.join(pluginRoot, ".claude-plugin"), { recursive: true });
+  fs.writeFileSync(
+    path.join(pluginRoot, ".claude-plugin", "plugin.json"),
+    JSON.stringify({ name, description: "test plugin" }, null, 2)
+  );
+  return pluginRoot;
+}
+
+function writeSkill(pluginRoot: string, name: string, description: string): void {
+  const dir = path.join(pluginRoot, "skills", name);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(
     path.join(dir, "SKILL.md"),
@@ -43,12 +53,12 @@ function writeSkill(root: string, name: string, description: string): void {
 }
 
 function writeFlatFile(
-  root: string,
+  pluginRoot: string,
   kind: "commands" | "agents",
   name: string,
   description: string
 ): void {
-  const dir = path.join(root, kind);
+  const dir = path.join(pluginRoot, kind);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(
     path.join(dir, `${name}.md`),
@@ -58,7 +68,7 @@ function writeFlatFile(
 
 interface Ctx {
   tmpRoot: tmp.DirectoryResult;
-  skillsRoot: string;
+  marketplaceRoot: string;
   db: Db;
   events: EventBus;
   emitted: EmittedEvent[];
@@ -67,28 +77,45 @@ interface Ctx {
 
 let ctx: Ctx;
 let prevEnv: string | undefined;
+let prevLegacyEnv: string | undefined;
 
 beforeEach(async () => {
   const tmpRoot = await tmp.dir({ unsafeCleanup: true });
-  const skillsRoot = path.join(tmpRoot.path, "astack-skills");
-  fs.mkdirSync(skillsRoot, { recursive: true });
+  const marketplaceRoot = path.join(tmpRoot.path, "astack-marketplace");
+  fs.mkdirSync(path.join(marketplaceRoot, ".claude-plugin"), { recursive: true });
+  fs.writeFileSync(
+    path.join(marketplaceRoot, ".claude-plugin", "marketplace.json"),
+    JSON.stringify(
+      {
+        name: "astack-marketplace",
+        owner: { name: "test" },
+        plugins: [{ name: "astack-workflow", source: "./plugins/astack-workflow" }]
+      },
+      null,
+      2
+    )
+  );
+  const pluginRoot = writePlugin(marketplaceRoot, "astack-workflow");
 
-  // Required sentinel for astackSkillsRepoRoot()'s probe.
-  writeSkill(skillsRoot, "harness-init", "system-skill that must be filtered");
+  // Required sentinel for astackMarketplaceRoot()'s probe.
+  writeSkill(pluginRoot, "harness-init", "system skill packaged in plugin");
   // Add scripts/templates so the layout looks realistic (not strictly
   // required by the scanner but ensures we don't pick up any stray files).
-  fs.mkdirSync(path.join(skillsRoot, "skills", "harness-init", "scripts"), {
-    recursive: true
-  });
+  fs.mkdirSync(
+    path.join(pluginRoot, "skills", "harness-init", "scripts"),
+    { recursive: true }
+  );
 
   // Regular skills + commands + agents that should survive the filter.
-  writeSkill(skillsRoot, "alpha", "first regular inline skill");
-  writeSkill(skillsRoot, "beta", "second regular inline skill");
-  writeFlatFile(skillsRoot, "commands", "do-something", "test command");
-  writeFlatFile(skillsRoot, "agents", "helper", "test agent");
+  writeSkill(pluginRoot, "alpha", "first regular inline skill");
+  writeSkill(pluginRoot, "beta", "second regular inline skill");
+  writeFlatFile(pluginRoot, "commands", "do-something", "test command");
+  writeFlatFile(pluginRoot, "agents", "helper", "test agent");
 
-  prevEnv = process.env.ASTACK_SKILLS_ROOT;
-  process.env.ASTACK_SKILLS_ROOT = skillsRoot;
+  prevEnv = process.env.ASTACK_MARKETPLACE_ROOT;
+  prevLegacyEnv = process.env.ASTACK_SKILLS_ROOT;
+  process.env.ASTACK_MARKETPLACE_ROOT = marketplaceRoot;
+  delete process.env.ASTACK_SKILLS_ROOT;
   _resetAstackSkillsRootCacheForTests();
 
   const db = openDatabase({ path: ":memory:" });
@@ -105,16 +132,21 @@ beforeEach(async () => {
     systemSkillIds: () => new Set(["harness-init"])
   });
 
-  ctx = { tmpRoot, skillsRoot, db, events, emitted, service };
+  ctx = { tmpRoot, marketplaceRoot, db, events, emitted, service };
 });
 
 afterEach(async () => {
   ctx.db.close();
   await ctx.tmpRoot.cleanup();
   if (prevEnv === undefined) {
+    delete process.env.ASTACK_MARKETPLACE_ROOT;
+  } else {
+    process.env.ASTACK_MARKETPLACE_ROOT = prevEnv;
+  }
+  if (prevLegacyEnv === undefined) {
     delete process.env.ASTACK_SKILLS_ROOT;
   } else {
-    process.env.ASTACK_SKILLS_ROOT = prevEnv;
+    process.env.ASTACK_SKILLS_ROOT = prevLegacyEnv;
   }
   _resetAstackSkillsRootCacheForTests();
 });
@@ -124,11 +156,11 @@ describe("InlineSkillRepoService.bootstrap", () => {
     const result = ctx.service.bootstrap();
 
     expect(result.inserted).toBe(true);
-    expect(result.rootPath).toBe(ctx.skillsRoot);
+    expect(result.rootPath).toBe(ctx.marketplaceRoot);
     expect(result.repo).not.toBeNull();
     expect(result.repo!.git_url).toBe(INLINE_SKILL_REPO_GIT_URL);
     expect(result.repo!.name).toBe(INLINE_SKILL_REPO_NAME);
-    expect(result.repo!.local_path).toBe(ctx.skillsRoot);
+    expect(result.repo!.local_path).toBe(ctx.marketplaceRoot);
 
     // Confirms a single row landed in DB.
     const repos = new RepoRepository(ctx.db).list();
@@ -136,22 +168,18 @@ describe("InlineSkillRepoService.bootstrap", () => {
     expect(repos.rows[0]?.git_url).toBe(INLINE_SKILL_REPO_GIT_URL);
   });
 
-  it("filters harness-init while keeping other skills + commands + agents", () => {
+  it("keeps plugin-namespaced skills + commands + agents", () => {
     const result = ctx.service.bootstrap();
 
     const names = result.skills.map((s) => `${s.type}:${s.name}`).sort();
     expect(names).toEqual([
-      "agent:helper",
-      "command:do-something",
-      "skill:alpha",
-      "skill:beta"
+      "agent:astack-workflow/helper",
+      "command:astack-workflow/do-something",
+      "skill:astack-workflow/alpha",
+      "skill:astack-workflow/beta",
+      "skill:astack-workflow/harness-init"
     ]);
-
-    // The exclusion warning must reference harness-init by name so
-    // operators can grep daemon.log.
-    expect(
-      result.warnings.some((w) => /harness-init/.test(w) && /reserved/.test(w))
-    ).toBe(true);
+    expect(result.warnings).toEqual([]);
   });
 
   it("is idempotent: a second call neither duplicates the row nor re-emits RepoRegistered", () => {
@@ -174,22 +202,39 @@ describe("InlineSkillRepoService.bootstrap", () => {
 
   it("dynamically prunes skills that disappear from disk between bootstraps", () => {
     const first = ctx.service.bootstrap();
-    expect(first.skills.find((s) => s.name === "alpha")).toBeDefined();
+    expect(
+      first.skills.find((s) => s.name === "astack-workflow/alpha")
+    ).toBeDefined();
 
     // User deletes one skill between daemon restarts.
-    fs.rmSync(path.join(ctx.skillsRoot, "skills", "alpha"), {
-      recursive: true,
-      force: true
-    });
+    fs.rmSync(
+      path.join(
+        ctx.marketplaceRoot,
+        "plugins",
+        "astack-workflow",
+        "skills",
+        "alpha"
+      ),
+      {
+        recursive: true,
+        force: true
+      }
+    );
 
     const second = ctx.service.bootstrap();
-    expect(second.skills.find((s) => s.name === "alpha")).toBeUndefined();
+    expect(
+      second.skills.find((s) => s.name === "astack-workflow/alpha")
+    ).toBeUndefined();
 
     // DB row count for this repo should match the post-prune scan.
     const repoId = second.repo!.id;
     const dbSkills = new SkillRepository(ctx.db).listByRepo(repoId);
-    expect(dbSkills.find((s) => s.name === "alpha")).toBeUndefined();
-    expect(dbSkills.find((s) => s.name === "beta")).toBeDefined();
+    expect(
+      dbSkills.find((s) => s.name === "astack-workflow/alpha")
+    ).toBeUndefined();
+    expect(
+      dbSkills.find((s) => s.name === "astack-workflow/beta")
+    ).toBeDefined();
   });
 
   it("self-heals stale local_path when the workspace moves", () => {
@@ -202,13 +247,13 @@ describe("InlineSkillRepoService.bootstrap", () => {
       .run("/some/stale/elsewhere", repoId);
 
     const second = ctx.service.bootstrap();
-    expect(second.repo!.local_path).toBe(ctx.skillsRoot);
+    expect(second.repo!.local_path).toBe(ctx.marketplaceRoot);
   });
 
-  // NOTE: a "missing astack-skills/" path test is intentionally NOT
+  // NOTE: a "missing astack-marketplace/" path test is intentionally NOT
   // included here. Inside the monorepo working tree the workspace
-  // fallback in `astackSkillsRepoRoot()` always finds the real
-  // `<repo>/astack-skills/`, so the only way to exercise the "not
+  // fallback in `astackMarketplaceRoot()` always finds the real
+  // `<repo>/astack-marketplace/`, so the only way to exercise the "not
   // located" branch is to shell out to a sandbox with no source tree
   // visible — not worth the test infra weight. The contract is
   // verified instead by:
@@ -217,15 +262,17 @@ describe("InlineSkillRepoService.bootstrap", () => {
   // which a daemon-level integration test would catch.
 });
 
-describe("InlineSkillRepoService — system-skill blacklist contract (regression)", () => {
-  it("when the blacklist is empty, harness-init IS included (sanity check)", () => {
+describe("InlineSkillRepoService — marketplace namespace contract", () => {
+  it("harness-init is included under the plugin namespace even with the system blacklist", () => {
     const looseService = new InlineSkillRepoService({
       db: ctx.db,
       events: ctx.events,
       logger: nullLogger(),
-      systemSkillIds: () => new Set<string>()
+      systemSkillIds: () => new Set(["harness-init"])
     });
     const result = looseService.bootstrap();
-    expect(result.skills.find((s) => s.name === "harness-init")).toBeDefined();
+    expect(
+      result.skills.find((s) => s.name === "astack-workflow/harness-init")
+    ).toBeDefined();
   });
 });

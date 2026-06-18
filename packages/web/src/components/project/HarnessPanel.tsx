@@ -19,15 +19,15 @@ import {
  * Harness tab — v0.4, extended in v0.7.
  *
  * Displays the installation status of the system-level `harness-init` skill
- * inside this project plus the project-level governance scaffold
- * (AGENTS.md + docs/version/ + docs/retro/) required by `/spec` et al.
+ * inside this project plus the project-level lightweight Spec scaffold
+ * (AGENTS.md + docs/version/INDEX.md) required by the spec/dev/mr skill flow.
  *
  * Five possible states:
  *
  *   - installed            (skill hash matches built-in AND every scaffold
  *                           file exists)
- *   - scaffold_incomplete  (skill OK but governance files missing — user
- *                           needs to run `/init_harness` in the AI chat)
+ *   - scaffold_incomplete  (skill OK but Spec workflow files missing — user
+ *                           needs to invoke `harness-init` in the AI chat)
  *   - drift                (seed dir present but user modified it — will
  *                           be overwritten on next Re-install)
  *   - missing              (seed dir absent)
@@ -37,7 +37,7 @@ import {
  * Actions:
  *   - "Re-install" button reseeds the built-in skill. This does NOT
  *     materialize AGENTS.md / docs/**; those come from the
- *     `/init_harness` slash command run inside the AI chat. The
+ *     `harness-init` skill run inside the AI chat. The
  *     instructions panel (toggle via "Show instructions") explains this.
  *
  * inspectHarness is a pure read — the tab refreshes via:
@@ -131,13 +131,10 @@ export function HarnessPanel({ projectId }: Props): React.JSX.Element {
         <p className="text-xs text-fg-tertiary max-w-2xl">
           A built-in system-level <span className="font-medium">skill</span>{" "}
           (<code className="font-mono">harness-init</code>) that lays down the
-          governance scaffold (<code className="font-mono">AGENTS.md</code> +{" "}
-          <code className="font-mono">docs/version/</code> +{" "}
-          <code className="font-mono">docs/retro/</code>). This is different from
-          the <code className="font-mono">/init_harness</code> slash{" "}
-          <span className="font-medium">command</span>, which runs inside your
-          AI coding tool — the skill materializes the shell script, the command
-          drives the interactive migration.
+          Spec scaffold (<code className="font-mono">AGENTS.md</code> +{" "}
+          <code className="font-mono">docs/version/INDEX.md</code>). Install
+          seeds the skill files; invoking the same skill in your AI coding tool
+          drives the interactive scaffold or migration step.
         </p>
       </div>
 
@@ -214,14 +211,14 @@ export function describeStatus(state: ProjectHarnessState): StatusMeta {
         label: "Installed",
         tone: "accent",
         detail:
-          "The Harness skill is deployed and all governance files (AGENTS.md + docs/version/ + docs/retro/) are in place."
+          "The Harness skill is deployed and all Spec workflow files (AGENTS.md + docs/version/INDEX.md) are in place."
       };
     case HarnessStatus.ScaffoldIncomplete:
       return {
         label: "Scaffold incomplete",
         tone: "warn",
         detail:
-          "The Harness skill is installed, but the project is missing required governance files. Open this project in your AI coding tool and run /init_harness in the chat to materialize them."
+          "The Harness skill is installed, but the project is missing required Spec workflow files. Open this project in your AI coding tool and ask it to use the harness-init skill."
       };
     case HarnessStatus.Drift:
       return {
@@ -235,7 +232,7 @@ export function describeStatus(state: ProjectHarnessState): StatusMeta {
         label: "Not installed",
         tone: "hollow",
         detail:
-          "The harness-init skill is not present in this project. Click Install to seed it, then run /init_harness in the AI chat to finish setup."
+          "The harness-init skill is not present in this project. Click Install to seed it, then invoke harness-init in the AI chat to finish setup."
       };
     case HarnessStatus.SeedFailed:
       return {
@@ -325,55 +322,46 @@ function MetaRow({
 /**
  * Instructions block — v0.7.
  *
- * Harness setup is driven by a slash command inside the AI coding tool
+ * Harness setup is driven by the harness-init skill inside the AI coding tool
  * chat (e.g. Claude Code / CodeBuddy IDE), not a raw shell command.
  * Running the init script directly from a terminal skips the interactive
  * prompts for project metadata and leaves the AI-migration step unexecuted
- * on existing projects. We present `/init_harness` as the single entry
- * point; the shell script is an implementation detail invoked by that
- * skill.
- *
- * Namespace disambiguation (v0.7 B1):
- *   `/init_harness` is a slash **command** (single `.md` under
- *   `.claude/commands/`) whereas `harness-init` is a directory **skill**
- *   shipped by astack. The command is NOT bundled — users must subscribe
- *   it from a repo that publishes it (e.g. the in-house `astack-skills`
- *   repo). We call this out here so users don't assume `/init_harness`
- *   exists out of the box.
+ * on existing projects. We present a plain language skill invocation prompt;
+ * the shell script is an implementation detail used by the skill.
  */
 function InstructionsBlock({
   status
 }: {
   status: ProjectHarnessState["status"];
 }): React.JSX.Element {
-  const command = "/init_harness";
+  const prompt = "Use the harness-init skill to initialize this project.";
   const toast = useToast();
   const copy = (): void => {
     navigator.clipboard
-      .writeText(command)
+      .writeText(prompt)
       .then(() => toast.ok("Copied"))
       .catch(() => toast.error("Copy failed"));
   };
 
   const lead =
     status === HarnessStatus.ScaffoldIncomplete
-      ? "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and run the following slash command in the chat to finish Harness initialization (AGENTS.md + docs/version/ + docs/retro/):"
-      : "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and run the following slash command in the chat to initialize the Harness governance scaffolding (AGENTS.md + docs/version/ + docs/retro/):";
+      ? "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and ask it to use the following skill prompt to finish Harness initialization (AGENTS.md + docs/version/INDEX.md):"
+      : "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and ask it to use the following skill prompt to initialize the lightweight Spec scaffold (AGENTS.md + docs/version/INDEX.md):";
 
   return (
     <div className="mt-2 rounded border border-line-subtle bg-surface-1 px-3 py-3 space-y-2">
       <div className="text-xs text-fg-secondary max-w-xl">{lead}</div>
       <div className="flex items-start gap-2">
         <code className="flex-1 text-xs font-mono text-fg-primary bg-base rounded px-2 py-1.5 break-all">
-          {command}
+          {prompt}
         </code>
         <Button variant="ghost" onClick={copy}>
           Copy
         </Button>
       </div>
       <div className="text-[11px] text-fg-tertiary">
-        Do not run the underlying shell script by hand — the slash command
-        handles both the scaffold rendering and the AI-assisted migration
+        Do not run the underlying shell script by hand — the skill handles
+        both the scaffold rendering and the AI-assisted migration
         for projects that already have an AGENTS.md.
       </div>
     </div>

@@ -63,6 +63,7 @@ export {
 } from "./system-skills/service.js";
 export {
   systemSkillsRoot,
+  astackMarketplaceRoot,
   astackSkillsRepoRoot
 } from "./system-skills/paths.js";
 export {

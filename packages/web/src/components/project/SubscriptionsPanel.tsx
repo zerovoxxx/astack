@@ -297,7 +297,7 @@ function SubscriptionGroups({
       {commands.length > 0 && (
         <SubscriptionGroup
           title="Commands"
-          description="Single-file slash commands invoked from the AI chat (e.g. /init_harness)."
+          description="Single-file slash commands invoked from the AI chat (e.g. /run_checks)."
           rows={commands}
           projectId={projectId}
           onUnsubscribe={onUnsubscribe}

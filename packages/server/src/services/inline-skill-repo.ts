@@ -1,17 +1,16 @@
 /**
  * InlineSkillRepoService — register & dynamically (re-)parse the
- * project's bundled `astack-skills/` repo on every daemon startup.
+ * project's bundled `astack-marketplace/` marketplace on every daemon startup.
  *
  *   ┌─────────────────────────────────────────────────────────────────┐
  *   │  bootstrap()                                                    │
- *   │     1. Locate <astack-skills>/ via paths.astackSkillsRepoRoot() │
+ *   │     1. Locate <astack-marketplace>/ via paths.astackMarketplaceRoot() │
  *   │        — silently skip when missing (npm dist not yet vendored) │
  *   │     2. Ensure a skill_repo row exists with the synthetic        │
- *   │        git_url `inline:astack-skills` (idempotent insert /      │
+ *   │        git_url `inline:astack-marketplace` (idempotent insert / │
  *   │        self-heal local_path / scan_config when drifted)         │
- *   │     3. Re-scan the repo every call (no git fetch), filter out   │
- *   │        system-skill names (currently `harness-init`), and       │
- *   │        upsert + prune in a single SQLite transaction.           │
+ *   │     3. Re-scan the marketplace every call (no git fetch), then  │
+ *   │        upsert + prune namespaced plugin skills in one tx.       │
  *   └─────────────────────────────────────────────────────────────────┘
  *
  * Why a synthetic git_url?
@@ -21,17 +20,15 @@
  *     `inline:<name>` makes the intent explicit and impossible to confuse
  *     with a real github URL.
  *
- * Why exclude `harness-init` from the inline-repo scan?
- *   - SystemSkillService already owns harness-init's lifecycle (seeded
- *     into projects on register, drift detection, force re-install). If
- *     we ALSO exposed it as a regular inline-repo skill, dashboards would
- *     show it twice and users could "subscribe" to it through the wrong
- *     path. The existing scanner blacklist (`systemSkillIds`) handles
- *     this for free — we just thread SystemSkillService's id set into
- *     scanRepo() options.
+ * Why still thread the system-skill blacklist?
+ *   - The marketplace scanner namespaces plugin skills as
+ *     `<plugin>/<skill>`, so `astack-workflow/harness-init` no longer
+ *     collides with the plain system skill id `harness-init`. Passing the
+ *     blacklist keeps the contract consistent with other scanners while
+ *     allowing marketplace-native namespaced skills to remain visible.
  *
  * Why re-scan on every startup?
- *   - The inline repo lives in the source tree (not in
+ *   - The inline marketplace lives in the source tree (not in
  *     ~/.astack/repos/), so users may edit its skills directly between
  *     daemon restarts. Re-scanning is cheap (<10 files) and removes a
  *     class of "I edited a SKILL.md but the dashboard still shows the
@@ -56,7 +53,7 @@ import { SkillRepository } from "../db/skills.js";
 import type { EventBus } from "../events.js";
 import type { Logger } from "../logger.js";
 import { scanRepo } from "../scanner/index.js";
-import { astackSkillsRepoRoot } from "../system-skills/paths.js";
+import { astackMarketplaceRoot } from "../system-skills/paths.js";
 
 /**
  * Synthetic git_url for the inline repo. Re-exported from `@astack/shared`
@@ -66,19 +63,14 @@ import { astackSkillsRepoRoot } from "../system-skills/paths.js";
 export const INLINE_SKILL_REPO_GIT_URL = INLINE_SKILL_REPO_URL;
 
 /** Display name shown in dashboards. */
-export const INLINE_SKILL_REPO_NAME = "astack-skills";
+export const INLINE_SKILL_REPO_NAME = "astack-marketplace";
 
 /**
- * Scan layout for the inline repo. The repo follows the standard
- * `{skills, commands, agents}` triple — same shape as
- * `everything-claude-code`'s scan_config minus the marketplace bits.
+ * Scan layout for the inline marketplace. It follows the shared
+ * Claude/Codex marketplace shape: plugins/<plugin>/{skills,commands,agents}.
  */
 const INLINE_SCAN_CONFIG: ScanConfig = {
-  roots: [
-    { path: "skills", kind: ScanRootKind.SkillDirs },
-    { path: "commands", kind: ScanRootKind.CommandFiles },
-    { path: "agents", kind: ScanRootKind.AgentFiles }
-  ]
+  roots: [{ path: "plugins", kind: ScanRootKind.PluginMarketplace }]
 };
 
 export interface InlineSkillRepoServiceDeps {
@@ -95,7 +87,7 @@ export interface InlineSkillRepoServiceDeps {
 }
 
 export interface InlineSkillRepoBootstrapResult {
-  /** Absolute path to astack-skills/, or null when the repo wasn't found. */
+  /** Absolute path to astack-marketplace/, or null when not found. */
   rootPath: string | null;
   /** The persisted skill_repo row (null when bootstrap skipped). */
   repo: SkillRepo | null;
@@ -133,7 +125,7 @@ export class InlineSkillRepoService {
 
     let root: string | null;
     try {
-      root = astackSkillsRepoRoot();
+      root = astackMarketplaceRoot();
     } catch (err) {
       this.deps.logger.warn("inline_skill_repo.locate_failed", {
         error: err instanceof Error ? err.message : String(err)
@@ -142,7 +134,7 @@ export class InlineSkillRepoService {
     }
     if (!root) {
       // Not a fatal error — astack may have been installed without the
-      // inline repo vendored. The harness-init system-skill code path
+      // inline marketplace vendored. The harness-init system-skill code path
       // will throw the harder INTERNAL when it tries to load registry.
       this.deps.logger.info("inline_skill_repo.skipped_missing_root");
       return empty;
@@ -171,9 +163,8 @@ export class InlineSkillRepoService {
     );
     const scanMs = Date.now() - scanStart;
     for (const w of warnings) {
-      // info-level (not warn) because the harness-init exclusion produces
-      // a deterministic warning on every startup — surfacing it as a
-      // daemon WARN would be too noisy for the happy path.
+      // info-level (not warn) so non-fatal marketplace authoring issues do
+      // not make daemon startup look failed.
       this.deps.logger.info("inline_skill_repo.scan_warning", {
         repo_id: repo.id,
         detail: w
@@ -285,9 +276,9 @@ export class InlineSkillRepoService {
   }
 
   /**
-   * Pick a non-colliding name. The strong preference is `astack-skills`
+   * Pick a non-colliding name. The strong preference is `astack-marketplace`
    * (matches `INLINE_SKILL_REPO_NAME`); if a user has manually registered
-   * a repo with that exact name we fall back to `astack-skills-inline`
+   * a repo with that exact name we fall back to `astack-marketplace-inline`
    * rather than failing bootstrap. This is best-effort defensive code —
    * the synthetic git_url makes a real-repo collision very unlikely.
    */

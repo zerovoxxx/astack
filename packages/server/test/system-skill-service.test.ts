@@ -42,7 +42,7 @@ interface TestCtx {
 }
 
 /**
- * Create the full Harness governance scaffold (AGENTS.md + docs/**) so
+ * Create the full Harness Spec scaffold (AGENTS.md + docs/version/INDEX.md) so
  * assertions that focus purely on the skill-level lifecycle (installed /
  * drift / missing / seed_failed) don't accidentally fall through to
  * `scaffold_incomplete` just because the test project is an empty dir.
@@ -72,7 +72,7 @@ async function makeCtx(
   });
 
   const projectDir = await tmp.dir({ unsafeCleanup: true });
-  // Default: materialize the governance files so lifecycle tests see
+  // Default: materialize the Spec workflow files so lifecycle tests see
   // `installed` rather than `scaffold_incomplete`. Opt out via
   // `withScaffold: false` when the test is specifically about scaffold
   // detection.
@@ -288,7 +288,7 @@ describe("SystemSkillService — seedIfMissing (register path)", () => {
 
   it("seeds into an empty slot, writing stub + emitting event", async () => {
     const projectDir = await tmp.dir({ unsafeCleanup: true });
-    // Pre-materialize governance files so the post-seed state is
+    // Pre-materialize Spec workflow files so the post-seed state is
     // unambiguously `installed` rather than `scaffold_incomplete`.
     writeScaffoldFiles(projectDir.path);
     const db = openDatabase({ path: ":memory:" });
@@ -419,24 +419,12 @@ describe("SystemSkillService — scaffold detection", () => {
 
   it("partial scaffold: missing[] lists only the files not yet materialized", async () => {
     ctx = await makeCtx({ withScaffold: false });
-    // Create only AGENTS.md + docs/version/INDEX.md; the retro files
-    // and BOUNDARIES remain absent.
+    // Create only AGENTS.md; INDEX.md remains absent.
     fs.writeFileSync(path.join(ctx.projectDir.path, "AGENTS.md"), "# agents\n");
-    fs.mkdirSync(path.join(ctx.projectDir.path, "docs", "version"), {
-      recursive: true
-    });
-    fs.writeFileSync(
-      path.join(ctx.projectDir.path, "docs", "version", "INDEX.md"),
-      "# index\n"
-    );
 
     const state = await ctx.service.inspect(ctx.projectId, SKILL_ID);
     expect(state.status).toBe(HarnessStatus.ScaffoldIncomplete);
-    expect(state.scaffold.missing).toEqual([
-      "docs/version/BOUNDARIES.md",
-      "docs/retro/golden-rules.md",
-      "docs/retro/patterns.md"
-    ]);
+    expect(state.scaffold.missing).toEqual(["docs/version/INDEX.md"]);
   });
 
   it("full scaffold + clean skill → installed with complete=true, missing=[]", async () => {

@@ -160,9 +160,9 @@ export class SystemSkillService {
         return this.handleSeedFailure(project, skill, err);
       }
       // Seed wrote the skill dir, but the scaffold files (AGENTS.md +
-      // docs/**) are still materialized by `/init_harness` in the AI
-      // chat — not by writeSeedDir. Re-compute state so a seed into a
-      // project with no governance docs correctly reports
+      // docs/**) are still materialized when the AI coding tool invokes
+      // the harness-init skill, not by writeSeedDir. Re-compute state so
+      // a seed into a project with no governance docs correctly reports
       // `scaffold_incomplete` rather than a false-positive `installed`.
       const state = this.inspectNoLock(project, skill);
       this.emitChanged(projectId, skill.id, state.status);
@@ -249,8 +249,8 @@ export class SystemSkillService {
     }
 
     // Skill-level is clean. Now decide between installed and
-    // scaffold_incomplete based on whether /init_harness has actually
-    // been run.
+    // scaffold_incomplete based on whether harness-init has materialized
+    // the scaffold files.
     if (!scaffold.complete) {
       return this.buildState(project, skill, HarnessStatus.ScaffoldIncomplete, {
         seededAt: seededEntry?.seeded_at ?? null,
@@ -510,15 +510,15 @@ export function safeLog(
 }
 
 /**
- * Probe whether the governance scaffold files required by Harness exist
+ * Probe whether the Spec scaffold files required by Harness exist
  * under the project root. The list lives in `@astack/shared`
  * (`HARNESS_SCAFFOLD_FILES`) so server and web agree on what "complete"
  * means. Missing files are returned as POSIX-relative paths, in the same
  * order as `HARNESS_SCAFFOLD_FILES`.
  *
  * This function is pure (no writes, no throws for missing files). An
- * inaccessible path just looks "missing" — the next `/init_harness` run
- * will materialize it.
+ * inaccessible path just looks "missing" — the next harness-init skill
+ * invocation will materialize it.
  */
 export function computeScaffoldState(projectPath: string): ProjectHarnessScaffoldState {
   const files = [...HARNESS_SCAFFOLD_FILES];

@@ -427,6 +427,12 @@ function writePluginManifest(root: string, pluginSlug: string): void {
   fs.writeFileSync(path.join(dir, "plugin.json"), `{"name":"${pluginSlug}"}`);
 }
 
+function writeCodexPluginManifest(root: string, pluginSlug: string): void {
+  const dir = path.join(root, pluginSlug, ".codex-plugin");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "plugin.json"), `{"name":"${pluginSlug}"}`);
+}
+
 describe("scanRepo — plugin-marketplace layout (v0.12)", () => {
   let dir: tmp.DirectoryResult;
   const marketplaceConfig: ScanConfig = {
@@ -529,9 +535,28 @@ describe("scanRepo — plugin-marketplace layout (v0.12)", () => {
       result.warnings.some(
         (w) =>
           w.includes("plugins/almost-a-plugin") &&
-          w.includes(".claude-plugin/plugin.json")
+          w.includes(".claude-plugin/plugin.json") &&
+          w.includes(".codex-plugin/plugin.json")
       )
     ).toBe(true);
+  });
+
+  it("T2b: accepts a Codex plugin manifest as a valid plugin container", () => {
+    const pluginsRoot = path.join(dir.path, "plugins");
+    writeCodexPluginManifest(pluginsRoot, "codex-workflow");
+    fs.mkdirSync(path.join(pluginsRoot, "codex-workflow", "skills", "spec"), {
+      recursive: true
+    });
+    fs.writeFileSync(
+      path.join(pluginsRoot, "codex-workflow", "skills", "spec", "SKILL.md"),
+      "---\nname: spec\ndescription: codex spec workflow\n---\n"
+    );
+
+    const result = scanRepo(dir.path, marketplaceConfig);
+    expect(result.warnings).toEqual([]);
+    expect(result.skills.map((s) => `${s.type}/${s.name}`)).toEqual([
+      "skill/codex-workflow/spec"
+    ]);
   });
 
   it("T3: plugin with manifest but no skills/commands/agents → 0 skills, 0 warnings", () => {
@@ -626,11 +651,12 @@ describe("scanRepo — plugin-marketplace layout (v0.12)", () => {
     ).toBe(true);
   });
 
-  it("T7: dotdir entries (.git, .github, .claude-plugin) are silently skipped", () => {
+  it("T7: dotdir entries (.git, .github, .claude-plugin, .codex-plugin) are silently skipped", () => {
     const pluginsRoot = path.join(dir.path, "plugins");
     fs.mkdirSync(path.join(pluginsRoot, ".git"), { recursive: true });
     fs.mkdirSync(path.join(pluginsRoot, ".github"), { recursive: true });
     fs.mkdirSync(path.join(pluginsRoot, ".claude-plugin"), { recursive: true });
+    fs.mkdirSync(path.join(pluginsRoot, ".codex-plugin"), { recursive: true });
     // One real plugin alongside, to confirm scan still proceeds.
     writePluginManifest(pluginsRoot, "real-plugin");
     fs.mkdirSync(path.join(pluginsRoot, "real-plugin", "commands"), {

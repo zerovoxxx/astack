@@ -148,17 +148,15 @@ export async function startDaemon(
 
   writePidFile(config, process.pid);
 
-  // v0.12: dynamically (re-)parse the bundled inline skill repo
-  // `<workspace>/astack-skills/`. This runs SYNCHRONOUSLY before the
-  // background seed pass so the inline repo's skills (`commands/`,
-  // `agents/`, `skills/` minus the system-skill blacklist) are already
-  // queryable when the first dashboard request lands. No network or
-  // git ops are involved — `astack-skills/` lives in the project tree —
-  // so blocking startup on it is cheap (~10ms for ~10 files).
+  // Dynamically (re-)parse the bundled inline plugin marketplace
+  // `<workspace>/astack-marketplace/`. This runs SYNCHRONOUSLY before
+  // the background seed pass so the inline marketplace's namespaced
+  // plugin skills are queryable when the first dashboard request lands.
+  // No network or git ops are involved, so blocking startup on it is cheap.
   //
   // Failures are swallowed inside `bootstrap()` itself so a corrupt
-  // inline repo can never take the daemon down; the daemon would just
-  // come up missing whichever inline-repo skills failed to scan, and
+  // inline marketplace can never take the daemon down; the daemon would
+  // just come up missing whichever inline skills failed to scan, and
   // the harness-init system-skill path stays unaffected (it has its
   // own resolver in `SystemSkillService.loadRegistry`).
   const inlineSkillRepoService = new InlineSkillRepoService({

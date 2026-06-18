@@ -71,7 +71,7 @@ describe("HTTP /api/projects/:id/harness", () => {
   beforeEach(async () => {
     dataDir = await tmp.dir({ unsafeCleanup: true });
     projectDir = await tmp.dir({ unsafeCleanup: true });
-    // Pre-materialize the Harness governance scaffold (AGENTS.md +
+    // Pre-materialize the Harness Spec scaffold (AGENTS.md +
     // docs/**) so skill-lifecycle assertions land on `installed` rather
     // than `scaffold_incomplete`. Tests that specifically exercise
     // scaffold detection override this inside the `it`.
@@ -196,10 +196,10 @@ describe("HTTP /api/projects/:id/harness", () => {
       expect(res.json.code).toBe(ErrorCode.PROJECT_NOT_FOUND);
     });
 
-    it("returns status=scaffold_incomplete when governance files are absent", async () => {
+    it("returns status=scaffold_incomplete when Spec workflow files are absent", async () => {
       // Delete the scaffold files we pre-seeded in beforeEach to simulate
-      // a project where harness-init was seeded but /init_harness was
-      // never run.
+      // a project where harness-init was seeded but the scaffold was never
+      // materialized.
       for (const rel of HARNESS_SCAFFOLD_FILES) {
         const abs = path.join(projectDir.path, rel);
         fs.rmSync(abs, { force: true });

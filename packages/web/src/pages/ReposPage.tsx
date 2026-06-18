@@ -294,7 +294,7 @@ export function ReposPage(): React.JSX.Element {
       ) : repos.length === 0 ? (
         <EmptyState
           title="No repos yet"
-          hint="Register a git repository that contains skills/, commands/, or agents/ directories. Astack clones and scans it."
+          hint="Register a git repository that contains skills/, commands/, agents/, or Claude plugin marketplace directories. Astack clones and scans it."
         >
           <Button
             variant="primary"
@@ -465,9 +465,9 @@ function RepoCard({
               <SkillCounts counts={counts} loading={skillsState?.loading} />
               {/* Hash + synced time are git-state facts; suppress for
                   repos that have neither (notably the inline
-                  `astack-skills` repo, whose v0.12 bootstrap intentionally
-                  skips `git rev-parse`). Rendering `— · synced —` was
-                  pure noise on those rows. */}
+                  `astack-marketplace` repo, whose bootstrap intentionally
+                  skips `git rev-parse`). Rendering empty git facts was pure
+                  noise on those rows. */}
               {repo.head_hash ? (
                 <>
                   <MetaSep />
@@ -623,8 +623,8 @@ function Chevron({ open }: { open: boolean }): React.JSX.Element {
  */
 function RepoSourceTag({ repo }: { repo: SkillRepo }): React.JSX.Element {
   // `isBuiltinRepoUrl` covers BOTH the cloned seed URLs and the inline
-  // `inline:astack-skills` URL — v0.12 promoted the bundled skills dir
-  // to a first-class inline repo, and it deserves the same provenance
+  // `inline:astack-marketplace` URL — the bundled plugin marketplace is a
+  // first-class inline repo, and it deserves the same provenance
   // claim as the github-hosted seeds.
   const isBuiltin = isBuiltinRepoUrl(repo.git_url);
   const isOpenSource = repo.kind === "open-source";
@@ -688,9 +688,9 @@ function stripGitHubPrefix(url: string): string {
 /**
  * Three-tier sort for the Repos list:
  *
- *   1. The inline `astack-skills` repo is force-pinned to the top.
- *      It's the project's "home" repo (ships harness-init, owns the
- *      default skill/command/agent set), so users should see it
+ *   1. The inline `astack-marketplace` repo is force-pinned to the top.
+ *      It's the project's "home" marketplace (ships harness-init and
+ *      astack-workflow skills), so users should see it
  *      regardless of insertion order in the DB.
  *
  *   2. Other BUILT-IN repos (the three cloned seeds) come next, kept

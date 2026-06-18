@@ -286,12 +286,12 @@ export const BUILTIN_SEED_URLS: readonly string[] = [
 ];
 
 /**
- * Synthetic git_url for the inline (no-clone) bundled skill repo
- * `<workspace>/astack-skills/`. Registered on every daemon start by
+ * Synthetic git_url for the inline (no-clone) bundled marketplace
+ * `<workspace>/astack-marketplace/`. Registered on every daemon start by
  * `InlineSkillRepoService.bootstrap()`. Never collides with a real
  * git URL because of the `inline:` scheme prefix.
  */
-export const INLINE_SKILL_REPO_URL = "inline:astack-skills";
+export const INLINE_SKILL_REPO_URL = "inline:astack-marketplace";
 
 /** True iff the given git URL matches one of the builtin seed URLs. */
 export function isBuiltinSeedUrl(url: string): boolean {
@@ -524,8 +524,8 @@ export interface ProjectStatus {
  * cloned from a user repo). See v0.4 spec §A1 for why this is a
  * separate domain concept from `Skill`.
  *
- * v0.4 ships exactly one: `harness-init`, which seeds the Harness
- * governance scaffolding (AGENTS.md + docs/version/ + docs/retro/)
+ * v0.4 ships exactly one: `harness-init`, which seeds the lightweight
+ * Harness Spec workflow scaffold (AGENTS.md + docs/version/INDEX.md)
  * into projects on register.
  *
  * `content_hash` is computed at daemon startup by iterating the
@@ -541,16 +541,17 @@ export interface SystemSkill {
 }
 
 /**
- * Installation state of a system skill + its governance scaffold in a project.
+ * Installation state of a system skill + its Spec scaffold in a project.
  *
  *   - "installed"           — seed dir matches built-in AND every required
  *                             governance file exists under the project root
  *                             (see `HARNESS_SCAFFOLD_FILES`). Harness is
- *                             ready to drive /spec /dev /code_review etc.
+ *                             ready to drive the spec/dev/mr skill flow.
  *   - "scaffold_incomplete" — seed dir is fine, but one or more governance
  *                             files are missing. The user still needs to
- *                             run `/init_harness` in the AI tool chat to
- *                             materialize AGENTS.md + docs/version/ + docs/retro/.
+ *                             invoke the harness-init skill in the AI tool
+ *                             chat to materialize AGENTS.md +
+ *                             docs/version/INDEX.md.
  *   - "drift"               — seed dir exists but its hash differs from the
  *                             built-in version (user modified it); will be
  *                             overwritten on the next Re-install.
@@ -562,7 +563,7 @@ export interface SystemSkill {
  * Built-in skill is the source of truth — drift is not a conflict, just a
  * notice. The scaffold side is orthogonal: a clean skill seed with an
  * empty `docs/` tree still reports `scaffold_incomplete` until the
- * governance files exist. See v0.4 spec §A2 (extended by v0.7).
+ * Spec workflow files exist. See v0.4 spec §A2 (extended by v0.7).
  *
  * Ordering when multiple conditions hold: seed_failed > missing > drift >
  * scaffold_incomplete > installed. This matches the UI's "worst first"
@@ -583,16 +584,12 @@ export type HarnessStatus = (typeof HarnessStatus)[keyof typeof HarnessStatus];
  * project root. Drives `ProjectHarnessScaffoldState.missing` detection
  * on the server and the missing-files list on the Web UI.
  *
- * Keep this list in sync with `system-skills/harness-init/templates/*`
- * — every template rendered by `init-harness.sh` must have a matching
- * entry here.
+ * Keep this list in sync with the harness-init templates bundled under
+ * `astack-marketplace/plugins/astack-workflow/skills/harness-init/`.
  */
 export const HARNESS_SCAFFOLD_FILES: readonly string[] = [
   "AGENTS.md",
-  "docs/version/INDEX.md",
-  "docs/version/BOUNDARIES.md",
-  "docs/retro/golden-rules.md",
-  "docs/retro/patterns.md"
+  "docs/version/INDEX.md"
 ];
 
 /**

@@ -4,10 +4,10 @@
  * Covers:
  *   - 5 statuses render correct label + button copy
  *   - drift surface shows the "will be overwritten" advisory
- *   - scaffold_incomplete surface shows missing files + /init_harness hint
+ *   - scaffold_incomplete surface shows missing files + harness-init skill hint
  *   - seed_failed surface shows last_error
  *   - Re-install triggers api.installHarness + updates state
- *   - Show instructions expand/collapse with /init_harness content
+ *   - Show instructions expand/collapse with harness-init skill content
  */
 
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -25,7 +25,7 @@ import {
 
 const BASE_SKILL = {
   id: "harness-init",
-  name: "Harness governance bootstrap",
+  name: "Harness Spec bootstrap",
   description: "test description",
   source_path: "/tmp/source",
   content_hash: "deadbeef".repeat(8)
@@ -115,7 +115,7 @@ describe("HarnessPanel", () => {
     mountHarness();
     await waitFor(() => expect(screen.getByText("Installed")).toBeInTheDocument());
     expect(
-      screen.getByText(/all governance files .* are in place/i)
+      screen.getByText(/all Spec workflow files .* are in place/i)
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /re-install/i })
@@ -131,16 +131,14 @@ describe("HarnessPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders Scaffold incomplete with missing files + /init_harness hint", async () => {
+  it("renders Scaffold incomplete with missing files + harness-init skill hint", async () => {
     stubFetch({ "/harness": () => makeState("scaffold_incomplete") });
     mountHarness();
     await waitFor(() =>
       expect(screen.getByText("Scaffold incomplete")).toBeInTheDocument()
     );
-    // Detail text should mention the slash command — there are several
-    // mentions now (header explainer + status detail), we only care that
-    // at least one mentions /init_harness verbatim inside this panel.
-    expect(screen.getAllByText(/\/init_harness/).length).toBeGreaterThan(0);
+    // Detail text should mention the skill users need to invoke.
+    expect(screen.getAllByText(/harness-init/).length).toBeGreaterThan(0);
     // Missing files are listed inside the dedicated ScaffoldMissingBlock
     // group — scope the queries there because the header explainer also
     // mentions `AGENTS.md` / `docs/version/` as part of its prose.
@@ -204,16 +202,14 @@ describe("HarnessPanel", () => {
     await waitFor(() => expect(screen.getByText("Installed")).toBeInTheDocument());
   });
 
-  it("Show instructions toggles a block pointing at /init_harness (no raw shell)", async () => {
+  it("Show instructions toggles a block pointing at harness-init skill (no raw shell)", async () => {
     const user = userEvent.setup();
     stubFetch({ "/harness": () => makeState("installed") });
     mountHarness();
     await waitFor(() => expect(screen.getByText("Installed")).toBeInTheDocument());
 
-    // The header always mentions /init_harness (namespace explainer),
-    // but the Instructions block — identified by the slash-command code
-    // chip rendered alongside the Copy button — must not be visible
-    // before the toggle.
+    // The Instructions block is identified by the skill prompt rendered
+    // alongside the Copy button and must not be visible before the toggle.
     expect(
       screen.queryByRole("button", { name: /^Copy$/ })
     ).not.toBeInTheDocument();
@@ -222,12 +218,14 @@ describe("HarnessPanel", () => {
       screen.getByRole("button", { name: /show instructions/i })
     );
 
-    // The instructions block is now visible: Copy button + the slash
-    // command chip + the do-not-run-the-shell-script disclaimer.
+    // The instructions block is now visible: Copy button + the skill prompt
+    // chip + the do-not-run-the-shell-script disclaimer.
     expect(
       screen.getByRole("button", { name: /^Copy$/ })
     ).toBeInTheDocument();
-    expect(screen.getAllByText("/init_harness").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText("Use the harness-init skill to initialize this project.")
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/do not run the underlying shell script by hand/i)
     ).toBeInTheDocument();
@@ -240,17 +238,17 @@ describe("HarnessPanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("v0.7 B1: header distinguishes system skill `harness-init` from the slash command `/init_harness`", async () => {
+  it("header describes the bundled `harness-init` system skill", async () => {
     stubFetch({ "/harness": () => makeState("installed") });
     mountHarness();
     await waitFor(() => expect(screen.getByText("Installed")).toBeInTheDocument());
 
     // A `system` badge marks the panel as an astack-bundled resource.
     expect(screen.getByText("system")).toBeInTheDocument();
-    // Body copy names both the skill and the command so users can't
-    // conflate them.
+    // Body copy names the bundled skill and no longer points at a slash
+    // command wrapper.
     expect(screen.getByText(/harness-init/)).toBeInTheDocument();
-    expect(screen.getAllByText(/\/init_harness/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/\/init_harness/)).not.toBeInTheDocument();
   });
 
   it("API fetch is issued to /api/projects/:id/harness", async () => {

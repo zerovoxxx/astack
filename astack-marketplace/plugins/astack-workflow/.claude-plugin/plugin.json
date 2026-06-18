@@ -1,0 +1,17 @@
+{
+  "name": "astack-workflow",
+  "displayName": "Astack Workflow",
+  "version": "0.1.0",
+  "description": "Lightweight Spec-driven workflow for Claude Code projects.",
+  "author": {
+    "name": "zerovoxxx"
+  },
+  "license": "MIT",
+  "keywords": [
+    "spec",
+    "workflow",
+    "verification",
+    "claude-code"
+  ],
+  "skills": "./skills/"
+}

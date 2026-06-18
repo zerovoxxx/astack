@@ -1,0 +1,26 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "astack-marketplace",
+  "description": "Claude Code plugins for lightweight Spec-driven development workflows.",
+  "owner": {
+    "name": "zerovoxxx"
+  },
+  "plugins": [
+    {
+      "name": "astack-workflow",
+      "displayName": "Astack Workflow",
+      "description": "Lightweight Spec workflow skills for initializing project governance, writing specs, implementing changes, and preparing merge requests with fresh verification evidence.",
+      "version": "0.1.0",
+      "author": {
+        "name": "zerovoxxx"
+      },
+      "category": "development",
+      "tags": [
+        "spec-driven-development",
+        "workflow",
+        "verification"
+      ],
+      "source": "./plugins/astack-workflow"
+    }
+  ]
+}

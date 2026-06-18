@@ -8,12 +8,14 @@
  * here. When we add a second system skill, revisit: if the registry
  * exceeds ~3 entries or needs dynamic metadata, switch to parsing.
  *
- * IDs MUST equal the subdirectory name under `<astack-skills>/skills/`
- * (resolved by `systemSkillsRoot()` in v0.12+ — previously this was
+ * IDs MUST equal the subdirectory name under
+ * `<astack-marketplace>/plugins/astack-workflow/skills/` (resolved by
+ * `systemSkillsRoot()` in v0.12+ — previously this was
  * `packages/server/system-skills/`). The scanner (A9) uses these IDs
- * as a blacklist to exclude same-named skills from user-imported
- * repos AND from the inline-skill-repo scan, so users cannot
- * accidentally double-expose harness-init through the marketplace UI.
+ * as a blacklist to exclude same-named plain skills from user-imported
+ * repos. Plugin-marketplace scans use namespaced names such as
+ * `astack-workflow/harness-init`, so those remain valid marketplace
+ * entries and do not collide with the system seed.
  */
 
 export interface SystemSkillDescriptor {
@@ -28,9 +30,9 @@ export interface SystemSkillDescriptor {
 export const SYSTEM_SKILLS: readonly SystemSkillDescriptor[] = [
   {
     id: "harness-init",
-    name: "Harness governance bootstrap",
+    name: "Harness Spec bootstrap",
     description:
-      "初始化或迁移项目的 Harness 研发流程治理基础设施（AGENTS.md + docs/version/ + docs/retro/），为 /spec /dev /code_review /mr /retro 等命令体系打底。"
+      "初始化或迁移项目的轻量 Spec 工作流基础设施（AGENTS.md + docs/version/INDEX.md），为 astack-workflow 的 spec/dev/mr skill 主线打底。"
   }
 ];
 

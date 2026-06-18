@@ -1,9 +1,9 @@
 /**
- * Scan a root path as a "Claude Code plugin marketplace": each
+ * Scan a root path as a Claude/Codex plugin marketplace: each
  * first-level subdirectory is a plugin container, identified by the
- * presence of `.claude-plugin/plugin.json` (whitelist principle, same
- * spirit as `SKILL.md` for skill-dirs and `*.md` basename + NAME_REGEX
- * for flat files).
+ * presence of `.claude-plugin/plugin.json` or `.codex-plugin/plugin.json`
+ * (whitelist principle, same spirit as `SKILL.md` for skill-dirs and
+ * `*.md` basename + NAME_REGEX for flat files).
  *
  * For each valid plugin container `<plugin>` under `<rootPath>`:
  *   <rootPath>/<plugin>/skills/    → scanSkillDirs (resultType=skill)
@@ -21,14 +21,15 @@
  *
  * Warnings (not failures):
  *   - Subdir whose name passes NAME_REGEX but lacks
- *     `.claude-plugin/plugin.json` → warned (likely an authoring
- *     mistake — author meant to ship a plugin but forgot the manifest).
+ *     `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` → warned
+ *     (likely an authoring mistake — author meant to ship a plugin but
+ *     forgot the manifest).
  *   - Subdir whose name FAILS NAME_REGEX or starts with `.` → silently
  *     skipped (could be `.git/`, `.github/`, `__archived__/`, etc.;
  *     warning would be noise).
  *   - Plugin with neither skills/ nor commands/ nor agents/ → no
  *     warning, no skill emitted (e.g. pure-MCP plugin = `.mcp.json`
- *     only is a legal Claude plugin shape).
+ *     only is a legal plugin shape).
  *
  * The function is pure: it never throws for malformed input. The lone
  * exception is the namePrefix invariant inside scanSkillDirs /
@@ -57,11 +58,10 @@ export function scanPluginMarketplace(
   for (const entry of safeReaddir(dir)) {
     if (!entry.isDirectory()) continue;
 
-    // Dotdirs (`.git`, `.github`, `.claude-plugin` itself) — skip silently.
+    // Dotdirs (`.git`, `.github`, manifest dirs themselves) — skip silently.
     if (entry.name.startsWith(".")) continue;
 
     const pluginSlug = entry.name;
-    const manifestAbs = path.join(dir, pluginSlug, ".claude-plugin", "plugin.json");
 
     if (!NAME_REGEX.test(pluginSlug)) {
       // The slug would corrupt the (type, name) dedup key if we let it
@@ -72,13 +72,15 @@ export function scanPluginMarketplace(
       continue;
     }
 
-    if (!isFile(manifestAbs)) {
+    if (!hasPluginManifest(dir, pluginSlug)) {
       // Looks like a plugin (name passes NAME_REGEX) but lacks the
       // marketplace manifest — surface as a warning so the author can
       // notice. Random files / non-plugin folders that fail NAME_REGEX
       // already got skipped silently above.
+      const relPath = posixJoin(rootPath, pluginSlug);
       warnings.push(
-        `skipped plugin missing .claude-plugin/plugin.json: ${posixJoin(rootPath, pluginSlug)}`
+        "skipped plugin missing .claude-plugin/plugin.json or " +
+          `.codex-plugin/plugin.json: ${relPath}`
       );
       continue;
     }
@@ -94,8 +96,22 @@ export function scanPluginMarketplace(
     const agentsRel = posixJoin(posixJoin(rootPath, pluginSlug), "agents");
 
     scanSkillDirs(repoRoot, skillsRel, out, warnings, pluginSlug);
-    scanFlatFiles(repoRoot, commandsRel, out, warnings, SkillType.Command, pluginSlug);
-    scanFlatFiles(repoRoot, agentsRel, out, warnings, SkillType.Agent, pluginSlug);
+    scanFlatFiles(
+      repoRoot,
+      commandsRel,
+      out,
+      warnings,
+      SkillType.Command,
+      pluginSlug
+    );
+    scanFlatFiles(
+      repoRoot,
+      agentsRel,
+      out,
+      warnings,
+      SkillType.Agent,
+      pluginSlug
+    );
   }
 }
 
@@ -111,4 +127,11 @@ export function scanPluginMarketplace(
 function posixJoin(a: string, b: string): string {
   if (a === "") return b;
   return `${a}/${b}`;
+}
+
+function hasPluginManifest(dir: string, pluginSlug: string): boolean {
+  return (
+    isFile(path.join(dir, pluginSlug, ".claude-plugin", "plugin.json")) ||
+    isFile(path.join(dir, pluginSlug, ".codex-plugin", "plugin.json"))
+  );
 }

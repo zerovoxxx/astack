@@ -2,11 +2,11 @@
  * Harness tab E2E (v0.4 PR6, v0.7 scaffold extension).
  *
  * Covers:
- *   1. installed happy path — project with governance scaffold → register → Harness tab shows Installed
+ *   1. installed happy path — project with Spec scaffold → register → Harness tab shows Installed
  *   2. drift overwrite     — modify seed file → Drift → Re-install → Installed restored
  *   3. legacy preserved    — pre-existing harness-init dir → not auto-overwritten on register
  *   4. polluted repo       — user repo with skills/harness-init/ → excluded from scan (A9)
- *   5. scaffold incomplete — missing governance files → tab shows Scaffold incomplete + /init_harness hint
+ *   5. scaffold incomplete — missing Spec workflow files → tab shows Scaffold incomplete + harness-init skill hint
  */
 
 import {
@@ -32,9 +32,9 @@ import {
 } from "./fixtures/helpers.js";
 
 /**
- * Create the Harness governance scaffold inside `projectDir` so the tab
+ * Create the Harness Spec scaffold inside `projectDir` so the tab
  * lands on `installed` after register — skipping this helper is the
- * correct way to simulate "skill seeded but /init_harness never run".
+ * correct way to simulate "skill seeded but scaffold never materialized".
  */
 function writeScaffoldFiles(projectDir: string): void {
   for (const rel of HARNESS_SCAFFOLD_FILES) {
@@ -82,7 +82,7 @@ test.describe("harness tab — v0.4 system skill lifecycle", () => {
     ).toBe(true);
   });
 
-  test("register without scaffold → Harness tab shows Scaffold incomplete and /init_harness hint", async ({
+  test("register without scaffold → Harness tab shows Scaffold incomplete and harness-init skill hint", async ({
     page,
     request
   }) => {
@@ -104,15 +104,15 @@ test.describe("harness tab — v0.4 system skill lifecycle", () => {
     await expect(
       missingList.getByText("AGENTS.md", { exact: true })
     ).toBeVisible();
-    // Status detail mentions the slash command (not bash). The token
-    // also appears in the panel intro copy, so we match the first
-    // occurrence rather than asserting strict-mode uniqueness.
-    await expect(page.getByText(/\/init_harness/).first()).toBeVisible();
+    // Status detail mentions the skill prompt (not bash).
+    await expect(page.getByText(/harness-init/).first()).toBeVisible();
 
-    // Clicking "Show instructions" reveals the /init_harness block, NOT
+    // Clicking "Show instructions" reveals the harness-init prompt, NOT
     // a raw shell command.
     await page.getByRole("button", { name: /show instructions/i }).click();
-    await expect(page.getByText(/\/init_harness/).first()).toBeVisible();
+    await expect(
+      page.getByText("Use the harness-init skill to initialize this project.")
+    ).toBeVisible();
     await expect(page.getByText(/init-harness\.sh/i)).not.toBeVisible();
   });
 
