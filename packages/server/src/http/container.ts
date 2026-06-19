@@ -35,7 +35,7 @@ export interface ServiceContainer {
   systemSkillService: SystemSkillService;
   /** v0.5 — see spec §3 / PR3. */
   projectBootstrapService: ProjectBootstrapService;
-  /** v0.7 — LocalSkill domain (see docs/version/Iteration6_LocalSkills_SPEC.md §1.5). */
+  /** v0.7 — LocalSkill domain (see docs/astack/version/Iteration6_LocalSkills_SPEC.md §1.5). */
   localSkillService: LocalSkillService;
   /**
    * Auto-appends `.astack/` and `.astack.json` to the project root
@@ -46,7 +46,7 @@ export interface ServiceContainer {
   gitignoreGuardService: GitignoreGuardService;
   /**
    * v0.11 — Daemon-side periodic pull/push (see
-   * docs/version/Iteration10_AutoSync_SPEC.md). PR1 wires the service into
+   * docs/astack/version/Iteration10_AutoSync_SPEC.md). PR1 wires the service into
    * the container so daemon.ts can call `start()`/`stop()` and PR2
    * routes can read its config / trigger manual cycles. The service
    * itself is dormant when `config.enabled === false`.

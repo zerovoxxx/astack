@@ -12,7 +12,7 @@
  *
  * Writer endpoints all return 200 with a partial-success shape (failed[]
  * inside body); only the project-404 case produces a 4xx error. Same
- * contract as /bootstrap/* (see docs/version/Iteration4_SubscriptionBootstrap_SPEC.md).
+ * contract as /bootstrap/* (see docs/astack/version/Iteration4_SubscriptionBootstrap_SPEC.md).
  */
 
 import {

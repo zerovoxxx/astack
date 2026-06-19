@@ -55,7 +55,7 @@ function makeState(
       status === "scaffold_incomplete"
         ? {
             files: [...HARNESS_SCAFFOLD_FILES],
-            missing: ["AGENTS.md", "docs/astack/INDEX.md"],
+            missing: ["CLAUDE.md", "AGENTS.md", "docs/astack/INDEX.md"],
             complete: false
           }
         : scaffoldComplete
@@ -142,10 +142,11 @@ describe("HarnessPanel", () => {
     expect(screen.getAllByText(/harness-init/).length).toBeGreaterThan(0);
     // Missing files are listed inside the dedicated ScaffoldMissingBlock
     // group — scope the queries there because the header explainer also
-    // mentions `AGENTS.md` / `docs/astack/` as part of its prose.
+    // mentions `CLAUDE.md` / `AGENTS.md` / `docs/astack/` as part of its prose.
     const missingBlock = screen.getByRole("group", {
       name: /missing scaffold files/i
     });
+    expect(within(missingBlock).getByText("CLAUDE.md")).toBeInTheDocument();
     expect(within(missingBlock).getByText("AGENTS.md")).toBeInTheDocument();
     expect(
       within(missingBlock).getByText("docs/astack/INDEX.md")

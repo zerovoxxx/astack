@@ -71,15 +71,15 @@ describe("HTTP /api/projects/:id/harness", () => {
   beforeEach(async () => {
     dataDir = await tmp.dir({ unsafeCleanup: true });
     projectDir = await tmp.dir({ unsafeCleanup: true });
-    // Pre-materialize the Harness Spec scaffold (AGENTS.md +
-    // docs/**) so skill-lifecycle assertions land on `installed` rather
-    // than `scaffold_incomplete`. Tests that specifically exercise
+    // Pre-materialize the Harness Spec scaffold (CLAUDE.md + AGENTS.md
+    // symlink + docs/**) so skill-lifecycle assertions land on `installed`
+    // rather than `scaffold_incomplete`. Tests that specifically exercise
     // scaffold detection override this inside the `it`.
-    for (const rel of HARNESS_SCAFFOLD_FILES) {
-      const abs = path.join(projectDir.path, rel);
-      fs.mkdirSync(path.dirname(abs), { recursive: true });
-      fs.writeFileSync(abs, `# ${rel}\n`);
-    }
+    fs.writeFileSync(path.join(projectDir.path, "CLAUDE.md"), "# CLAUDE.md\n");
+    fs.symlinkSync("CLAUDE.md", path.join(projectDir.path, "AGENTS.md"));
+    const indexPath = path.join(projectDir.path, "docs/astack/INDEX.md");
+    fs.mkdirSync(path.dirname(indexPath), { recursive: true });
+    fs.writeFileSync(indexPath, "# docs/astack/INDEX.md\n");
     db = openDatabase({ path: ":memory:" });
     app = createApp({
       config: buildConfig(dataDir.path),

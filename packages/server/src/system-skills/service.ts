@@ -159,11 +159,12 @@ export class SystemSkillService {
       } catch (err) {
         return this.handleSeedFailure(project, skill, err);
       }
-      // Seed wrote the skill dir, but the scaffold files (AGENTS.md +
-      // docs/**) are still materialized when the AI coding tool invokes
-      // the harness-init skill, not by writeSeedDir. Re-compute state so
-      // a seed into a project with no governance docs correctly reports
-      // `scaffold_incomplete` rather than a false-positive `installed`.
+      // Seed wrote the skill dir, but the scaffold files (CLAUDE.md +
+      // AGENTS.md symlink + docs/**) are still materialized when the AI
+      // coding tool invokes the harness-init skill, not by writeSeedDir.
+      // Re-compute state so a seed into a project with no governance docs
+      // correctly reports `scaffold_incomplete` rather than a false-positive
+      // `installed`.
       const state = this.inspectNoLock(project, skill);
       this.emitChanged(projectId, skill.id, state.status);
       return state;

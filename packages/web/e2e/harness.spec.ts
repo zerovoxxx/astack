@@ -16,14 +16,13 @@ import {
   rmSync,
   writeFileSync,
   appendFileSync,
-  existsSync
+  existsSync,
+  symlinkSync
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { expect, test } from "@playwright/test";
-
-import { HARNESS_SCAFFOLD_FILES } from "@astack/shared";
 
 import {
   daemonUrl,
@@ -37,11 +36,12 @@ import {
  * correct way to simulate "skill seeded but scaffold never materialized".
  */
 function writeScaffoldFiles(projectDir: string): void {
-  for (const rel of HARNESS_SCAFFOLD_FILES) {
-    const abs = path.join(projectDir, rel);
-    mkdirSync(path.dirname(abs), { recursive: true });
-    writeFileSync(abs, `# ${rel}\n`);
-  }
+  writeFileSync(path.join(projectDir, "CLAUDE.md"), "# CLAUDE.md\n");
+  symlinkSync("CLAUDE.md", path.join(projectDir, "AGENTS.md"));
+
+  const indexPath = path.join(projectDir, "docs/astack/INDEX.md");
+  mkdirSync(path.dirname(indexPath), { recursive: true });
+  writeFileSync(indexPath, "# docs/astack/INDEX.md\n");
 }
 
 test.describe("harness tab — v0.4 system skill lifecycle", () => {
@@ -87,7 +87,7 @@ test.describe("harness tab — v0.4 system skill lifecycle", () => {
     request
   }) => {
     // Intentionally NOT calling writeScaffoldFiles — simulates a project
-    // that has only the seeded skill dir, but no AGENTS.md / docs/**.
+    // that has only the seeded skill dir, but no CLAUDE.md / AGENTS.md / docs/**.
     const project = await registerProject(request, projectDir);
     await page.goto(`/projects/${project.id}?tab=harness`);
 
@@ -101,6 +101,9 @@ test.describe("harness tab — v0.4 system skill lifecycle", () => {
     const missingList = page.getByRole("group", {
       name: /Missing scaffold files/i
     });
+    await expect(
+      missingList.getByText("CLAUDE.md", { exact: true })
+    ).toBeVisible();
     await expect(
       missingList.getByText("AGENTS.md", { exact: true })
     ).toBeVisible();

@@ -31,13 +31,13 @@ describe("systemSkillsRoot", () => {
     expect(fs.existsSync(sh)).toBe(true);
   });
 
-  it("harness-init/templates/ contains AGENTS.md.tpl", () => {
+  it("harness-init/templates/ contains CLAUDE.md.tpl", () => {
     const root = systemSkillsRoot();
     const tpl = path.join(
       root,
       "harness-init",
       "templates",
-      "AGENTS.md.tpl"
+      "CLAUDE.md.tpl"
     );
     expect(fs.existsSync(tpl)).toBe(true);
   });

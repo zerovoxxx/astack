@@ -18,12 +18,12 @@ import type * as React from "react";
  *  - Actions inlined as small ghost/danger buttons. The pre-v0.9 `⋯`
  *    menu was removed: with only two options, a popover cost the user
  *    an extra click without saving any screen density.
- *    See docs/version/Iteration8_RepoActionsInline_SPEC.md.
+ *    See docs/astack/version/Iteration8_RepoActionsInline_SPEC.md.
  *  - `Force pull` only renders for `kind === "open-source"`. It resets
  *    the local mirror to `origin/HEAD` and pulls — destructive; gated
  *    behind `window.confirm(...)` that spells out the full
  *    `~/.astack/repos/<name>/` path so users can recall any hand-edits.
- *    See docs/version/Iteration9_ForceRefresh_SPEC.md.
+ *    See docs/astack/version/Iteration9_ForceRefresh_SPEC.md.
  *  - Status shown as dot + inline text, not pills.
  */
 

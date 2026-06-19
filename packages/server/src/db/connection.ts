@@ -185,7 +185,7 @@ export function openDatabase(opts: OpenDbOptions): Db {
  * `skill_repos` in v0.11. Required because `CREATE TABLE IF NOT EXISTS`
  * in `SCHEMA_DDL` is a no-op on tables that already exist (i.e. on every
  * pre-v0.11 user's database). See spec
- * `docs/version/Iteration10_AutoSync_SPEC.md` §4.4.2.
+ * `docs/astack/version/Iteration10_AutoSync_SPEC.md` §4.4.2.
  *
  * SQLite ≥ 3.35 supports `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
  * but Node's bundled SQLite version is not pinned across LTS lines, so

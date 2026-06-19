@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS skill_repos (
      RepoService.refresh) so that no-op auto-sync cycles do not pollute
      the "synced X ago" intuition shown for the mirror itself. NULL on
      rows that predate v0.11 or that AutoSync has never touched.
-     Cf. spec docs/version/Iteration10_AutoSync_SPEC.md §4.4.
+     Cf. spec docs/astack/version/Iteration10_AutoSync_SPEC.md §4.4.
      last_auto_sync_at is epoch ms (INTEGER), not ISO TEXT, to avoid
      timezone parsing on every read. */
   last_auto_sync_at      INTEGER,
@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS seed_decisions (
 -- Per-machine metadata index of .claude/** entries the user has adopted
 -- (or that bootstrap auto-adopted). Does NOT mirror .astack.json — local
 -- skills are not published, they are just tracked. See
--- docs/version/Iteration6_LocalSkills_SPEC.md §A1 / §A3.
+-- docs/astack/version/Iteration6_LocalSkills_SPEC.md §A1 / §A3.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS local_skills (
   id            TEXT PRIMARY KEY,                        -- uuid v4

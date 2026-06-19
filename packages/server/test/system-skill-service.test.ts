@@ -42,18 +42,19 @@ interface TestCtx {
 }
 
 /**
- * Create the full Harness Spec scaffold (AGENTS.md + docs/astack/INDEX.md) so
- * assertions that focus purely on the skill-level lifecycle (installed /
- * drift / missing / seed_failed) don't accidentally fall through to
- * `scaffold_incomplete` just because the test project is an empty dir.
- * Tests that want to exercise scaffold detection skip this helper.
+ * Create the full Harness Spec scaffold (CLAUDE.md + AGENTS.md symlink +
+ * docs/astack/INDEX.md) so assertions that focus purely on the skill-level
+ * lifecycle (installed / drift / missing / seed_failed) don't accidentally
+ * fall through to `scaffold_incomplete` just because the test project is an
+ * empty dir. Tests that want to exercise scaffold detection skip this helper.
  */
 function writeScaffoldFiles(projectDir: string): void {
-  for (const rel of HARNESS_SCAFFOLD_FILES) {
-    const abs = path.join(projectDir, rel);
-    fs.mkdirSync(path.dirname(abs), { recursive: true });
-    fs.writeFileSync(abs, `# ${rel}\n`);
-  }
+  fs.writeFileSync(path.join(projectDir, "CLAUDE.md"), "# CLAUDE.md\n");
+  fs.symlinkSync("CLAUDE.md", path.join(projectDir, "AGENTS.md"));
+
+  const indexPath = path.join(projectDir, "docs/astack/INDEX.md");
+  fs.mkdirSync(path.dirname(indexPath), { recursive: true });
+  fs.writeFileSync(indexPath, "# docs/astack/INDEX.md\n");
 }
 
 async function makeCtx(
@@ -419,8 +420,9 @@ describe("SystemSkillService — scaffold detection", () => {
 
   it("partial scaffold: missing[] lists only the files not yet materialized", async () => {
     ctx = await makeCtx({ withScaffold: false });
-    // Create only AGENTS.md; INDEX.md remains absent.
-    fs.writeFileSync(path.join(ctx.projectDir.path, "AGENTS.md"), "# agents\n");
+    // Create only the governance entrypoint pair; INDEX.md remains absent.
+    fs.writeFileSync(path.join(ctx.projectDir.path, "CLAUDE.md"), "# claude\n");
+    fs.symlinkSync("CLAUDE.md", path.join(ctx.projectDir.path, "AGENTS.md"));
 
     const state = await ctx.service.inspect(ctx.projectId, SKILL_ID);
     expect(state.status).toBe(HarnessStatus.ScaffoldIncomplete);

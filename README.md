@@ -58,8 +58,8 @@ pnpm dev               # 并行启动所有 package 的 watch 模式
 ## Docs
 
 - [Design Document](./docs/asset/design.md) — 完整设计（Office Hours + Eng Review + Design Review）
-- [AGENTS.md](./AGENTS.md) — 项目导航
-- [CLAUDE.md](./CLAUDE.md) — AI 工具路由规则
+- [CLAUDE.md](./CLAUDE.md) — 项目导航与 AI 工具协作规则
+- [AGENTS.md](./AGENTS.md) — 指向 `CLAUDE.md` 的兼容入口
 
 ## License
 

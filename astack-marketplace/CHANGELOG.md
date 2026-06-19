@@ -9,9 +9,9 @@
 - **Marketplace protocol migration**：目录从 `astack-skills/` 迁移为 `astack-marketplace/`，新增 `.claude-plugin/marketplace.json` 与 `plugins/astack-workflow/.claude-plugin/plugin.json`，按 Claude Code plugin marketplace 协议发布。
 - **Codex plugin protocol support**：新增 `.agents/plugins/marketplace.json` 与 `plugins/astack-workflow/.codex-plugin/plugin.json`，同一个 `astack-workflow` plugin 同时支持 Claude Code 与 Codex marketplace。
 - **单插件收敛**：默认交付形态收敛为 `astack-workflow` plugin，内部只保留轻量 Spec 工作流 skills 与同插件内脚本。
-- **个人 AI Coding 四流程**：默认工作流收敛为 `spec → plan → dev → ship` 四个核心 skill，`harness-init` 只生成 `AGENTS.md` 与 `docs/astack/INDEX.md`，不再创建边界索引、retro 知识库或评审 sidecar。
+- **个人 AI Coding 四流程**：默认工作流收敛为 `spec → plan → dev → ship` 四个核心 skill，`harness-init` 只生成 `CLAUDE.md`、`AGENTS.md` 软链与 `docs/astack/INDEX.md`，不再创建边界索引、retro 知识库或评审 sidecar。
 - **Harness 文档命名空间**：新项目 scaffold 统一使用 `docs/astack/{INDEX.md,version,plan}`，避免和业务文档的 `docs/version/` 混用。
-- **AGENTS 模板可扩展**：原文保留 Karpathy 编程规范，并新增 `扩展原则` 占位符承载项目专属约束。
+- **CLAUDE 模板可扩展**：`CLAUDE.md` 模板原文保留 Karpathy 编程规范，并新增 `扩展原则` 占位符承载项目专属约束；`AGENTS.md` 作为兼容软链指向 `CLAUDE.md`。
 - **轻量验证门**：`spec` skill 模板新增验证计划 / 验证记录，`dev` skill 要求执行并回写验证证据，`ship` skill 仅在新鲜验证通过后提交和推送。
 - **仓库定位收敛为 Claude Code / Codex plugin marketplace**。本仓库不再承载业务逻辑、CLI 工具或适配器实现；根目录只维护 marketplace catalog 与 `plugins/astack-workflow/` 插件源文件。
 - **`init-harness.sh` 归入 `astack-workflow` plugin**：脚本、模板与 `harness-init` skill 一起放在 `plugins/astack-workflow/skills/harness-init/`，保证 plugin 安装后不依赖仓库外部文件。
@@ -31,7 +31,7 @@
 ### Retained
 
 - 保留 `plugins/astack-workflow/skills/` 作为当前元数据载体；Slash Command 不再作为本仓库默认交付形态。
-- 保留 `AGENTS.md` 作为仓库治理说明，保留 `README.md`、`CLAUDE.md` 作为使用与协作入口。
+- 保留 `CLAUDE.md` 作为仓库治理说明，保留 `AGENTS.md` 作为兼容入口，保留 `README.md` 作为使用入口。
 - 保留 `plugins/astack-workflow/scripts/spec-lint.sh` 作为 Spec 机械化校验器。
 
 ---
