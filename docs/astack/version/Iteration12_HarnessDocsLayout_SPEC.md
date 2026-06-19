@@ -39,6 +39,7 @@
 7. `harness-init` 在创建或迁移 `CLAUDE.md` 后，幂等创建 `AGENTS.md -> CLAUDE.md` 软链。
 8. 若当前项目已有 `CLAUDE.md`，`harness-init` skill 必须要求 AI 参考当前项目已有文档做抽象总结，并按目标格式重构，而不是直接覆盖。
 9. `spec` / `plan` skill 使用统一 `文档信息` 表；SPEC 状态使用固定枚举和标准流转。
+10. `ship` skill 默认在当前分支提交和推送；只有用户明确要求切分支时才创建或切换分支。
 
 ## 3. 非目标
 
@@ -69,6 +70,7 @@
 - `docs/astack/INDEX.md` 是版本索引；SPEC 放在 `docs/astack/version/`；复杂任务 PLAN 放在 `docs/astack/plan/`。
 - SPEC / PLAN 的 `文档信息` 表统一为：`文档类型`、`文档状态`、`创建日期`、`最后更新`、`作者`、`关联文档`、`一句话目标`。业务版本只在 INDEX 维护，物理序号只由文件名表达；`作者` 优先取当前仓库 `git config user.name`，为空时写 `AI`。
 - 全流程唯一状态控制为 5 个：SPEC 使用 `待实施`、`开发中`、`已完成`、`阻塞`；PLAN 使用 `待执行`、`已完成`。SPEC 标准流转为 `待实施 -> 开发中 -> 已完成`，PLAN 标准流转为 `待执行 -> 已完成`，`阻塞` 可从任意状态进入。
+- `ship` 不因当前分支是 `main` / `master` 自动创建新分支；分支创建只响应用户显式要求。
 - `HARNESS_SCAFFOLD_FILES` 要求 `CLAUDE.md`、`AGENTS.md` 与 `docs/astack/INDEX.md` 存在；`version/` 和 `plan/` 目录由脚本创建，但不作为 server scaffold 完整性的文件项。
 - `CLAUDE.md` 是治理主文件，`AGENTS.md` 必须是指向 `CLAUDE.md` 的相对软链。
 - 本仓库存量 SPEC 已迁移到 `docs/astack/version/`；旧 review/archive sidecar 已删除。
@@ -91,6 +93,7 @@
 - workflow skill 文档不再把新 harness 输出写成旧 version 目录。
 - `spec` / `plan` skill 文档中的 `文档信息` 示例字段一致，且不包含业务版本或物理序号字段；`作者` 字段说明优先取当前仓库 git 用户。
 - `dev` / `ship` skill 文档不再引入验证类过渡状态；SPEC 保留 `开发中`，并只在 `待实施`、`开发中`、`已完成`、`阻塞` 之间流转。
+- `ship` skill 分支策略说明默认在当前分支提交和推送，且不再要求 `main` / `master` 默认新建分支。
 - `CLAUDE.md` 模板原文包含 Karpathy 编程规范，并包含 `扩展原则` 占位符。
 - migrate 模式的 skill 说明要求读取既有 `CLAUDE.md`、`AGENTS.md`、README 和历史 SPEC 后再语义重构。
 
@@ -144,6 +147,16 @@
 | 2026-06-19 | `if rg -n "设计中\|验证中\|验证通过" .claude/skills/spec/SKILL.md .claude/skills/dev/SKILL.md .claude/skills/plan/SKILL.md .claude/skills/ship/SKILL.md astack-marketplace/plugins/astack-workflow/skills/spec/SKILL.md astack-marketplace/plugins/astack-workflow/skills/dev/SKILL.md astack-marketplace/plugins/astack-workflow/skills/plan/SKILL.md astack-marketplace/plugins/astack-workflow/skills/ship/SKILL.md astack-marketplace/plugins/astack-workflow/scripts/spec-lint.sh; then exit 1; fi` | PASS | ship 前新鲜验证：workflow skill 和 SPEC lint 规则中不再出现已移除的文档状态词。 |
 | 2026-06-19 | `rg -n "全流程只使用 5 个唯一状态词\|PLAN 只使用两个状态\|待实施 -> 开发中 -> 已完成\|待执行 -> 已完成" .claude/skills astack-marketplace/plugins/astack-workflow/skills docs/astack/version/Iteration12_HarnessDocsLayout_SPEC.md` | PASS | ship 前新鲜验证：5 状态规则与 SPEC / PLAN 流转说明存在。 |
 | 2026-06-19 | `git diff --check` | PASS | ship 前新鲜验证：whitespace 检查通过。 |
+| 2026-06-19 | `diff -qr .claude/skills astack-marketplace/plugins/astack-workflow/skills` | PASS | 本地安装副本与 marketplace 源目录保持一致。 |
+| 2026-06-19 | `rg -n "默认不切分支\|只有用户明确要求.*切分支\|当前处于 detached HEAD" .claude/skills/ship/SKILL.md astack-marketplace/plugins/astack-workflow/skills/ship/SKILL.md` | PASS | `ship` 明确默认不切分支，且 detached HEAD 才视为分支不明确。 |
+| 2026-06-19 | `if rg -n "当前是主分支\|根据变更类型创建新分支\|当前是开发分支" .claude/skills/ship/SKILL.md astack-marketplace/plugins/astack-workflow/skills/ship/SKILL.md; then exit 1; fi` | PASS | `ship` 不再包含 main/master 默认创建新分支的规则。 |
+| 2026-06-19 | `bash astack-marketplace/plugins/astack-workflow/scripts/spec-lint.sh docs/astack/version/Iteration12_HarnessDocsLayout_SPEC.md` | PASS | 当前 SPEC 0 errors / 0 warnings，`开发中` 状态可被识别。 |
+| 2026-06-19 | `git diff --check` | PASS | whitespace 检查通过。 |
+| 2026-06-19 | `bash astack-marketplace/plugins/astack-workflow/scripts/spec-lint.sh docs/astack/version/Iteration12_HarnessDocsLayout_SPEC.md` | PASS | ship 前最终验证：当前 SPEC 0 errors / 0 warnings。 |
+| 2026-06-19 | `diff -qr .claude/skills astack-marketplace/plugins/astack-workflow/skills` | PASS | ship 前最终验证：本地安装副本与 marketplace 源目录一致。 |
+| 2026-06-19 | `rg -n "默认不切分支\|只有用户明确要求.*切分支\|当前处于 detached HEAD" .claude/skills/ship/SKILL.md astack-marketplace/plugins/astack-workflow/skills/ship/SKILL.md` | PASS | ship 前最终验证：`ship` 默认不切分支规则存在。 |
+| 2026-06-19 | `if rg -n "当前是主分支\|根据变更类型创建新分支\|当前是开发分支" .claude/skills/ship/SKILL.md astack-marketplace/plugins/astack-workflow/skills/ship/SKILL.md; then exit 1; fi` | PASS | ship 前最终验证：旧的 main 默认创建新分支规则不存在。 |
+| 2026-06-19 | `git diff --check` | PASS | ship 前最终验证：whitespace 检查通过。 |
 
 ## 9. 变更记录
 
@@ -160,3 +173,5 @@
 | 2026-06-19 | AI | 完成文档信息格式、SPEC 状态流转和作者字段规则的最终验证与交付状态更新。 |
 | 2026-06-19 | AI | 按反馈保留 SPEC `开发中`，移除设计和验证类过渡态；PLAN 状态收敛为 `待执行` / `已完成`。 |
 | 2026-06-19 | AI | 完成 5 状态流转规则的最终验证与交付状态更新。 |
+| 2026-06-19 | AI | 调整 `ship` 分支策略，默认在当前分支提交；仅用户显式要求时才切分支。 |
+| 2026-06-19 | AI | 完成 `ship` 默认当前分支提交策略的最终验证与交付状态更新。 |
