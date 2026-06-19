@@ -20,7 +20,7 @@ import {
  *
  * Displays the installation status of the system-level `harness-init` skill
  * inside this project plus the project-level lightweight Spec scaffold
- * (AGENTS.md + docs/version/INDEX.md) required by the spec/plan/dev/ship skill flow.
+ * (AGENTS.md + docs/astack/INDEX.md) required by the spec/plan/dev/ship skill flow.
  *
  * Five possible states:
  *
@@ -132,7 +132,7 @@ export function HarnessPanel({ projectId }: Props): React.JSX.Element {
           A built-in system-level <span className="font-medium">skill</span>{" "}
           (<code className="font-mono">harness-init</code>) that lays down the
           Spec scaffold (<code className="font-mono">AGENTS.md</code> +{" "}
-          <code className="font-mono">docs/version/INDEX.md</code>). Install
+          <code className="font-mono">docs/astack/INDEX.md</code>). Install
           seeds the skill files; invoking the same skill in your AI coding tool
           drives the interactive scaffold or migration step.
         </p>
@@ -211,7 +211,7 @@ export function describeStatus(state: ProjectHarnessState): StatusMeta {
         label: "Installed",
         tone: "accent",
         detail:
-          "The Harness skill is deployed and all Spec workflow files (AGENTS.md + docs/version/INDEX.md) are in place."
+          "The Harness skill is deployed and all Spec workflow files (AGENTS.md + docs/astack/INDEX.md) are in place."
       };
     case HarnessStatus.ScaffoldIncomplete:
       return {
@@ -345,8 +345,8 @@ function InstructionsBlock({
 
   const lead =
     status === HarnessStatus.ScaffoldIncomplete
-      ? "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and ask it to use the following skill prompt to finish Harness initialization (AGENTS.md + docs/version/INDEX.md):"
-      : "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and ask it to use the following skill prompt to initialize the lightweight Spec scaffold (AGENTS.md + docs/version/INDEX.md):";
+      ? "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and ask it to use the following skill prompt to finish Harness initialization (AGENTS.md + docs/astack/INDEX.md):"
+      : "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and ask it to use the following skill prompt to initialize the lightweight Spec scaffold (AGENTS.md + docs/astack/INDEX.md):";
 
   return (
     <div className="mt-2 rounded border border-line-subtle bg-surface-1 px-3 py-3 space-y-2">

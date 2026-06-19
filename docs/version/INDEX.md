@@ -6,6 +6,7 @@
 
 | 迭代 | 标题 | 状态 | 文档 | 创建日期 |
 |------|------|------|------|---------|
+| v0.13 | Harness docs layout：生成 `docs/astack/{INDEX.md,version,plan}` 并优化 AGENTS 模板 | IMPLEMENTED（验证通过） | [Iteration12_HarnessDocsLayout_SPEC.md](./Iteration12_HarnessDocsLayout_SPEC.md) | 2026-06-19 |
 | v0.12 | Plugin Marketplace 布局：扫描 `<root>/<plugin>/{skills,commands,agents}/` 二级容器 | IMPLEMENTED（PR1–PR3 已落地） | [Iteration11_PluginMarketplaceLayout_SPEC.md](./Iteration11_PluginMarketplaceLayout_SPEC.md) | 2026-05-13 |
 | v0.11 | Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊 | SHIPPED | [Iteration10_AutoSync_SPEC.md](./Iteration10_AutoSync_SPEC.md) | 2026-05-11 |
 | v0.10 | Force Refresh：脏 open-source 镜像的显式 reset + pull 入口 | IMPLEMENTED（单次合并，待 E2E 补测） | [Iteration9_ForceRefresh_SPEC.md](./Iteration9_ForceRefresh_SPEC.md) | 2026-05-10 |
@@ -22,5 +23,8 @@
 
 | 日期 | 版本 | 作者 | 摘要 |
 |------|------|------|------|
+| 2026-06-19 | v0.13 | AI | docs：创建 Harness docs layout 与 AGENTS 模板优化 SPEC。 |
+| 2026-06-19 | v0.13 | AI | feat(harness)：scaffold contract 改为 `docs/astack/INDEX.md` + `version/` + `plan/`，并同步 AGENTS 模板与 Harness 状态检测。 |
+| 2026-06-19 | v0.13 | AI | docs(harness)：AGENTS 模板原文保留 Karpathy 编程规范，并新增 `扩展原则` 占位符。 |
 | 2026-06-18 | v0.12 | AI | refactor：默认资产迁移为 `astack-marketplace` Claude plugin marketplace；内联扫描改用 `plugin-marketplace` 布局。 |
 | 2026-05-23 | v0.12 | AI | feat(server)：内联资产仓库 daemon 启动自扫（6 测），harness-init 迁入内联资产。 |

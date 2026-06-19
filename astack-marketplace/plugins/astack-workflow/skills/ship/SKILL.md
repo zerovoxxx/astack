@@ -1,57 +1,110 @@
 ---
 name: ship
-description: Use when local code or documentation changes are ready for final verification, commit, push, or handoff.
+description: |
+  当本地代码或文档变更准备好进行最终验证、提交、推送或交付时使用。
+  触发词：提交代码、推送变更、ship、发布、完成开发准备提交、最终验证、创建 MR、出一个 PR。
+  Use when local code or documentation changes are ready for final verification, commit, push, or MR creation.
 ---
 
 # Ship
 
-Ship the current change with fresh verification evidence and safe git handling.
+用新鲜的验证证据、规范的提交信息和安全的 git 操作交付当前变更。
 
-## Preflight
+## 预检
 
-Stop if:
+以下情况停止执行：
 
-- There are no local changes.
-- A merge, rebase, or cherry-pick is in progress.
-- The requested destination is unclear.
+- 没有本地变更。
+- 正在进行 merge、rebase 或 cherry-pick。
+- 目标分支不明确。
 
-## Verification
+## 代码质量检查
 
-Run fresh verification after the final code or documentation change. Prefer:
+```bash
+ruff format .
+ruff check . --fix
+```
 
-- SPEC `验证计划` commands if a matching SPEC exists.
-- Project-specific build / test commands for touched packages.
-- `git diff --check` for docs / prompt / skill-only changes.
+**必须解决本次改动引入的新问题**，已有问题可忽略。纯文档/skill 变更跳过此步，改用 `git diff --check`。
 
-Record command, exit code, date, and coverage in the SPEC `验证记录` when a matching SPEC exists.
+## 验证
 
-## SPEC And INDEX Flow
+在最后一次代码或文档改动后，运行新鲜验证。优先顺序：
 
-After verification passes:
+- 如存在匹配的 SPEC，使用 SPEC `验证计划` 中的命令。
+- 对受影响模块运行 `uv run pytest tests/{module}/ -v`。
+- 纯文档/skill 变更使用 `git diff --check`。
 
-1. Match changed files to relevant `docs/version/Iteration*_SPEC.md`.
-2. Set matching SPEC status to `已完成`.
-3. Update the corresponding `docs/version/INDEX.md` status.
-4. Append one concise changelog row to `INDEX.md`.
+存在匹配 SPEC 时，将命令、退出码、日期和覆盖范围记录到 SPEC `验证记录`。
 
-Do not create review or retro sidecars by default.
+## SPEC 与 INDEX 流程
 
-## Git Safety
+验证通过后：
 
-- Commit only after verification passes.
-- Inspect `git status --short --branch` and `git diff --stat` before staging.
-- Stage only the intended files.
-- Pull with rebase before push when the branch tracks an upstream.
-- If rebase conflicts, analyze and ask before editing conflict markers.
-- Never force-push.
-- If push is rejected, retry rebase + verification at most twice.
-- Create a PR only when the user asks or the repository workflow requires one.
+1. 将变更文件与相关 `docs/astack/version/Iteration*_SPEC.md` 匹配。
+2. 将匹配的 SPEC 状态设为 `已完成`。
+3. 更新对应 `docs/astack/INDEX.md` 的状态。
+4. 在 `INDEX.md` 追加一行简洁的变更日志。
 
-## Output
+默认不创建评审或复盘旁路文件。
 
-Report:
+## 分支策略
 
-- Verification commands and results.
-- SPEC / INDEX updates.
-- Commit hash.
-- Push target or PR link if available.
+- **当前是开发分支**（`feature/...`、`fix/...` 等）→ 直接在当前分支提交，**禁止**创建新分支。
+- **当前是主分支**（`main`/`master`）→ 根据变更类型创建新分支：
+
+| 类型 | 格式 | 示例 |
+|------|------|------|
+| 新功能 | `feat/描述` | `feat/add-sector-ranking` |
+| 修复 | `fix/描述` | `fix/order-race-condition` |
+| 重构 | `refactor/描述` | `refactor/market-service` |
+| 文档 | `docs/描述` | `docs/update-api-spec` |
+| 构建/工具 | `chore/描述` | `chore/upgrade-dependencies` |
+
+## 提交信息规范
+
+遵循 Conventional Commits 1.0.0，Header 必填，Body 推荐，Footer 按需。
+
+```text
+<type>(<scope>): <subject>
+
+[Body: 说明为什么这样改、解决思路]
+
+[Footer: BREAKING CHANGE 或 Closes #issue]
+```
+
+**Type**：`feat` / `fix` / `docs` / `style` / `refactor` / `perf` / `test` / `build` / `ci` / `chore` / `revert`
+
+**Subject**：中文，祈使句（"新增"而非"增加了"），不加句号，≤50 字符。
+
+示例：
+```text
+feat(market): 新增板块优先级评分与轮动分析
+
+引入 P1-P5 评分体系，对标参考项目板块分类映射，
+数据通过行业 ETF 日行情异步计算写入 sector_score 表。
+```
+
+## 文档同步
+
+检查 `docs/`，若本次变更涉及架构、接口或数据模型，必须同步更新对应文档后再提交。
+
+## Git 安全
+
+- 只在验证通过后提交。
+- 暂存前检查 `git status --short --branch` 和 `git diff --stat`，只暂存目标文件。
+- 推送前若分支有上游跟踪，使用 rebase 拉取最新。
+- 出现 rebase 冲突时，分析后询问用户再处理。
+- 禁止 force-push。
+- 推送被拒绝时，最多重试两次 rebase + 验证。
+- 只在用户要求或仓库工作流要求时创建 PR。
+- **不使用 `gh` CLI**；首次推送后命令输出中会有创建 MR 的链接，告知用户点击。
+
+## 输出
+
+报告以下内容：
+
+- 验证命令及结果。
+- SPEC / INDEX 更新情况（如有）。
+- Commit hash。
+- 推送目标或 MR 链接。

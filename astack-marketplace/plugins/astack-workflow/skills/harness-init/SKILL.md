@@ -1,17 +1,19 @@
 ---
 name: harness-init
 description: |
-  初始化或迁移项目的轻量 Spec 工作流基础设施（AGENTS.md 导航 + docs/version/INDEX.md 版本索引）。
+  初始化或迁移项目的轻量 Spec 工作流基础设施（AGENTS.md 导航 + docs/astack/INDEX.md 版本索引）。
   当用户说"初始化 harness / 搭建 spec 工作流 / 接入研发流程规范 / 给这个项目加上 AGENTS.md / setup harness / init harness"时触发。
   支持三种模式：全新项目从零初始化（fresh）、已有 AGENTS.md 迁移瘦身（migrate）、已初始化但缺文件的补齐（patch）。
 ---
 
 # Harness 轻量 Spec 初始化
 
-为项目搭建最小可用的 Spec 工作流。默认只维护两个入口：
+为项目搭建最小可用的 Spec 工作流。默认只维护一个治理入口和一个文档命名空间：
 
 - `AGENTS.md`：项目导航和少量硬规则
-- `docs/version/INDEX.md`：版本 / 迭代 / SPEC 的索引和短变更记录
+- `docs/astack/INDEX.md`：版本 / 迭代 / SPEC 的索引和短变更记录
+- `docs/astack/version/`：迭代 SPEC
+- `docs/astack/plan/`：复杂任务的实现计划
 
 每个迭代的目标、边界、设计、验收和重要结论都优先写在对应 `Iteration<N>_<Slug>_SPEC.md` 中。默认不创建 `BOUNDARIES.md`、`docs/retro/*`、`*_REVIEW.md`、`*_CR.md` 等 sidecar。
 
@@ -19,7 +21,7 @@ description: |
 
 1. **全新项目**：工作区没有 `AGENTS.md`，用户想接入 Spec 驱动工作流。
 2. **迁移项目**：已有 `AGENTS.md` 但混入大量迭代状态、边界规则或历史记录，需要瘦身为导航结构。
-3. **补齐项目**：已有 `AGENTS.md` 和部分 `docs/version/` 文件，但缺少 `INDEX.md`。
+3. **补齐项目**：已有 `AGENTS.md` 和部分 `docs/astack/` 文件，但缺少 `INDEX.md`。
 
 ## 执行流程
 
@@ -36,14 +38,15 @@ bash "${PLUGIN_ROOT}/skills/harness-init/scripts/init-harness.sh"
 
 | 检测条件 | 模式 | 脚本行为 |
 |---|---|---|
-| 无 `AGENTS.md` | `fresh` | 询问项目名/描述，渲染 `AGENTS.md` 和 `docs/version/INDEX.md` |
-| 有 `AGENTS.md`，无 `docs/version/INDEX.md` | `migrate` | 备份 `AGENTS.md` → `AGENTS.md.bak`，创建 `INDEX.md`，等待 AI 接手语义迁移 |
-| 有 `AGENTS.md` 且有 `docs/version/INDEX.md` | `patch` | 只补齐缺失入口，不覆盖已存在文件 |
+| 无 `AGENTS.md` | `fresh` | 询问项目名/描述，渲染 `AGENTS.md` 和 `docs/astack/INDEX.md`，创建 `version/` 与 `plan/` |
+| 有 `AGENTS.md`，无 `docs/astack/INDEX.md` | `migrate` | 备份 `AGENTS.md` → `AGENTS.md.bak`，创建 `INDEX.md`，等待 AI 接手语义迁移 |
+| 有 `AGENTS.md` 且有 `docs/astack/INDEX.md` | `patch` | 只补齐缺失入口和目录，不覆盖已存在文件 |
 
 脚本最后会运行轻量验证门：
 
 - 检查 `AGENTS.md` 存在。
-- 检查 `docs/version/INDEX.md` 存在。
+- 检查 `docs/astack/INDEX.md` 存在。
+- 检查 `docs/astack/version/` 和 `docs/astack/plan/` 存在。
 - 检查 `CLAUDE.md` 软链若存在则指向 `AGENTS.md`。
 - 若发现旧重流程文档（`BOUNDARIES.md`、`docs/retro/*`），只提示 legacy，不把它们当作必需项。
 
@@ -67,14 +70,17 @@ bash astack-marketplace/plugins/astack-workflow/skills/harness-init/scripts/init
 | 旧内容 | 迁移目标 |
 |---|---|
 | 项目定位、核心原则、运行约束 | 保留在 `AGENTS.md` |
-| 迭代状态表 | 迁移到 `docs/version/INDEX.md` |
-| 变更记录 | 迁移到 `docs/version/INDEX.md` 的 `## 变更记录` |
+| 迭代状态表 | 迁移到 `docs/astack/INDEX.md` |
+| 变更记录 | 迁移到 `docs/astack/INDEX.md` 的 `## 变更记录` |
+| 复杂任务计划 | 迁移到 `docs/astack/plan/` |
+| 迭代 SPEC | 迁移到 `docs/astack/version/` 或保留历史链接并在新 INDEX 中登记 |
 | 迭代边界、评审结论、复盘规则 | 优先收敛进对应 SPEC；没有对应 SPEC 时保留为 AGENTS 的短规则或丢弃过期内容 |
 
-重写后的 `AGENTS.md` 建议控制在 80 行以内，只保留：
+重写后的 `AGENTS.md` 保留 Karpathy 编程规范原文，并只补充必要的项目导航：
 
 - 项目定位
 - 核心开发原则
+- 扩展原则占位符
 - 权威文档入口
 - 当前活跃 SPEC 链接
 - 必须遵守的少量项目规则
@@ -84,10 +90,11 @@ bash astack-marketplace/plugins/astack-workflow/skills/harness-init/scripts/init
 完成后检查：
 
 1. `AGENTS.md` 存在且链接有效。
-2. `docs/version/INDEX.md` 存在且包含迭代表头。
-3. 旧 `AGENTS.md` 中仍有效的迭代状态未丢失。
-4. 不存在默认生成的 `BOUNDARIES.md`、`docs/retro/golden-rules.md`、`docs/retro/patterns.md`。
-5. 脚本输出 `轻量 Spec scaffold 验证通过`，或明确列出缺失文件。
+2. `docs/astack/INDEX.md` 存在且包含迭代表头。
+3. `docs/astack/version/` 和 `docs/astack/plan/` 存在。
+4. 旧 `AGENTS.md` 中仍有效的迭代状态未丢失。
+5. 不存在默认生成的 `BOUNDARIES.md`、`docs/retro/golden-rules.md`、`docs/retro/patterns.md`。
+6. 脚本输出 `轻量 Spec scaffold 验证通过`，或明确列出缺失文件。
 
 ## 目标结构
 
@@ -95,20 +102,22 @@ bash astack-marketplace/plugins/astack-workflow/skills/harness-init/scripts/init
 .
 ├── AGENTS.md
 └── docs/
-    └── version/
+    └── astack/
         ├── INDEX.md
-        ├── Iteration<N>_<Slug>_SPEC.md
-        └── archive/
+        ├── version/
+        │   └── Iteration<N>_<Slug>_SPEC.md
+        └── plan/
+            └── Iteration<N>_<Slug>_PLAN.md
 ```
 
 ## Skill 协作关系
 
 | Skill | 作用 | 依赖文件 |
 |---|---|---|
-| `/astack-workflow:spec` | 创建或更新迭代 SPEC | `AGENTS.md`、`docs/version/INDEX.md` |
+| `/astack-workflow:spec` | 创建或更新迭代 SPEC | `AGENTS.md`、`docs/astack/INDEX.md` |
 | `/astack-workflow:plan` | 拆开复杂任务 | SPEC、项目代码 |
 | `/astack-workflow:dev` | 按 SPEC / PLAN 实施 | SPEC / PLAN、项目代码 |
-| `/astack-workflow:ship` | 验证、提交、推送 | `docs/version/INDEX.md`、git 状态 |
+| `/astack-workflow:ship` | 验证、提交、推送 | `docs/astack/INDEX.md`、git 状态 |
 
 **默认工作流只有 `/astack-workflow:spec → /astack-workflow:plan → /astack-workflow:dev → /astack-workflow:ship` 四个核心 skill。** 其他评审、复盘或专项报告只在用户明确要求时临时创建，不作为脚手架基础设施。
 

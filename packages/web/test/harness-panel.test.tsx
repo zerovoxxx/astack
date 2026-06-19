@@ -55,7 +55,7 @@ function makeState(
       status === "scaffold_incomplete"
         ? {
             files: [...HARNESS_SCAFFOLD_FILES],
-            missing: ["AGENTS.md", "docs/version/INDEX.md"],
+            missing: ["AGENTS.md", "docs/astack/INDEX.md"],
             complete: false
           }
         : scaffoldComplete
@@ -117,6 +117,7 @@ describe("HarnessPanel", () => {
     expect(
       screen.getByText(/all Spec workflow files .* are in place/i)
     ).toBeInTheDocument();
+    expect(screen.getAllByText(/docs\/astack\/INDEX\.md/).length).toBeGreaterThan(0);
     expect(
       screen.getByRole("button", { name: /re-install/i })
     ).toBeInTheDocument();
@@ -141,13 +142,13 @@ describe("HarnessPanel", () => {
     expect(screen.getAllByText(/harness-init/).length).toBeGreaterThan(0);
     // Missing files are listed inside the dedicated ScaffoldMissingBlock
     // group — scope the queries there because the header explainer also
-    // mentions `AGENTS.md` / `docs/version/` as part of its prose.
+    // mentions `AGENTS.md` / `docs/astack/` as part of its prose.
     const missingBlock = screen.getByRole("group", {
       name: /missing scaffold files/i
     });
     expect(within(missingBlock).getByText("AGENTS.md")).toBeInTheDocument();
     expect(
-      within(missingBlock).getByText("docs/version/INDEX.md")
+      within(missingBlock).getByText("docs/astack/INDEX.md")
     ).toBeInTheDocument();
     // Re-install (not Install) because the skill itself is present.
     expect(

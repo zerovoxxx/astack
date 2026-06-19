@@ -3,7 +3,7 @@
 #
 # Usage:
 #   spec-lint.sh [file-or-directory]
-#   Defaults to docs/version/ and checks root-level Iteration*_SPEC.md files.
+#   Defaults to docs/astack/version/ and checks root-level Iteration*_SPEC.md files.
 #
 # Exit codes: 0 = no blocking errors, 1 = blocking errors found.
 
@@ -39,7 +39,8 @@ has_pattern() {
     grep -Eq "$pattern" "$file" 2>/dev/null
 }
 
-TARGET="${1:-docs/version}"
+TARGET="${1:-docs/astack/version}"
+INDEX_PATH="docs/astack/INDEX.md"
 
 if [ -f "$TARGET" ]; then
     FILES=("$TARGET")
@@ -130,16 +131,16 @@ done
 
 if [ -d "$TARGET" ]; then
     echo "--- Cross-file checks ---"
-    if [ -f "docs/version/INDEX.md" ]; then
+    if [ -f "$INDEX_PATH" ]; then
         for FILE in "${FILES[@]}"; do
             FILENAME=$(basename "$FILE")
             ITER_NUM=$(echo "$FILENAME" | grep -oE '^Iteration[0-9]+' | sed 's/Iteration//')
-            if [ -n "$ITER_NUM" ] && ! grep -q "Iteration$ITER_NUM" "docs/version/INDEX.md" 2>/dev/null; then
-                warn "Iteration$ITER_NUM exists as a SPEC file but is not referenced in docs/version/INDEX.md"
+            if [ -n "$ITER_NUM" ] && ! grep -q "Iteration$ITER_NUM" "$INDEX_PATH" 2>/dev/null; then
+                warn "Iteration$ITER_NUM exists as a SPEC file but is not referenced in $INDEX_PATH"
             fi
         done
     else
-        warn "docs/version/INDEX.md not found"
+        warn "$INDEX_PATH not found"
     fi
     echo ""
 fi

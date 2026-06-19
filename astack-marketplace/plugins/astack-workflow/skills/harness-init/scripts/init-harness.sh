@@ -29,6 +29,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TEMPLATES_DIR="$SKILL_DIR/templates"
+HARNESS_DOCS_DIR="docs/astack"
+HARNESS_VERSION_DIR="$HARNESS_DOCS_DIR/version"
+HARNESS_PLAN_DIR="$HARNESS_DOCS_DIR/plan"
+HARNESS_INDEX_PATH="$HARNESS_DOCS_DIR/INDEX.md"
 
 # ── 颜色 ──
 RED='\033[0;31m'
@@ -155,14 +159,24 @@ ensure_claude_md_symlink() {
 validate_lightweight_scaffold() {
     action "验证轻量 Spec scaffold"
 
-    local required_files=("AGENTS.md" "docs/version/INDEX.md")
+    local required_files=("AGENTS.md" "$HARNESS_INDEX_PATH")
     local missing=()
+    local required_dirs=("$HARNESS_VERSION_DIR" "$HARNESS_PLAN_DIR")
+    local missing_dirs=()
 
     for file in "${required_files[@]}"; do
         if [ "$DRY_RUN" = true ]; then
             info "[dry-run] 将验证 $file 存在"
         elif [ ! -f "$file" ]; then
             missing+=("$file")
+        fi
+    done
+
+    for dir in "${required_dirs[@]}"; do
+        if [ "$DRY_RUN" = true ]; then
+            info "[dry-run] 将验证 $dir/ 存在"
+        elif [ ! -d "$dir" ]; then
+            missing_dirs+=("$dir")
         fi
     done
 
@@ -176,6 +190,11 @@ validate_lightweight_scaffold() {
         exit 1
     fi
 
+    if [ ${#missing_dirs[@]} -gt 0 ]; then
+        echo -e "${RED}错误${NC}: 轻量 Spec scaffold 缺失目录: ${missing_dirs[*]}"
+        exit 1
+    fi
+
     if [ -L "CLAUDE.md" ] && [ "$(readlink CLAUDE.md)" != "AGENTS.md" ]; then
         echo -e "${RED}错误${NC}: CLAUDE.md 软链未指向 AGENTS.md"
         exit 1
@@ -184,6 +203,7 @@ validate_lightweight_scaffold() {
     success "轻量 Spec scaffold 验证通过: ${required_files[*]}"
 
     local legacy_files=(
+        "docs/version/INDEX.md"
         "docs/version/BOUNDARIES.md"
         "docs/retro/golden-rules.md"
         "docs/retro/patterns.md"
@@ -206,12 +226,12 @@ HAS_AGENTS_MD=false
 HAS_INDEX_MD=false
 
 [ -f "AGENTS.md" ] && HAS_AGENTS_MD=true
-[ -f "docs/version/INDEX.md" ] && HAS_INDEX_MD=true
+[ -f "$HARNESS_INDEX_PATH" ] && HAS_INDEX_MD=true
 
 info "项目目录: $(pwd)"
 info "Skill 目录: $SKILL_DIR"
 info "AGENTS.md: $( [ "$HAS_AGENTS_MD" = true ] && echo '已存在' || echo '不存在' )"
-info "docs/version/INDEX.md: $( [ "$HAS_INDEX_MD" = true ] && echo '已存在' || echo '不存在' )"
+info "$HARNESS_INDEX_PATH: $( [ "$HAS_INDEX_MD" = true ] && echo '已存在' || echo '不存在' )"
 echo ""
 
 # 检查模板目录
@@ -256,10 +276,10 @@ fi
 action "创建目录结构"
 
 if [ "$DRY_RUN" = true ]; then
-    info "[dry-run] mkdir -p docs/version"
+    info "[dry-run] mkdir -p $HARNESS_VERSION_DIR $HARNESS_PLAN_DIR"
 else
-    mkdir -p docs/version
-    success "docs/version/"
+    mkdir -p "$HARNESS_VERSION_DIR" "$HARNESS_PLAN_DIR"
+    success "$HARNESS_DOCS_DIR/（含 version/、plan/）"
 fi
 
 echo ""
@@ -298,7 +318,7 @@ echo ""
 
 # ── 3. 从模板渲染轻量治理文档（仅缺失时） ──
 
-[ "$HAS_INDEX_MD" = false ]       && action "创建 docs/version/INDEX.md"       && render_template "INDEX.md.tpl"       "docs/version/INDEX.md"       || true
+[ "$HAS_INDEX_MD" = false ]       && action "创建 $HARNESS_INDEX_PATH"       && render_template "INDEX.md.tpl"       "$HARNESS_INDEX_PATH"       || true
 
 echo ""
 
@@ -372,8 +392,10 @@ echo "  ."
 [ -L "CLAUDE.md" ] && echo "  ├── CLAUDE.md → AGENTS.md"
 [ -f "AGENTS.md" ] && echo "  ├── AGENTS.md"
 echo "  └── docs/"
-echo "      ├── version/"
-[ -f "docs/version/INDEX.md" ] && echo "      │   ├── INDEX.md"
+echo "      └── astack/"
+[ -f "$HARNESS_INDEX_PATH" ] && echo "          ├── INDEX.md"
+echo "          ├── version/"
+echo "          └── plan/"
 
 echo ""
 if [ "$MODE" = "fresh" ]; then

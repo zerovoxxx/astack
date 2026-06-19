@@ -525,7 +525,7 @@ export interface ProjectStatus {
  * separate domain concept from `Skill`.
  *
  * v0.4 ships exactly one: `harness-init`, which seeds the lightweight
- * Harness Spec workflow scaffold (AGENTS.md + docs/version/INDEX.md)
+ * Harness Spec workflow scaffold (AGENTS.md + docs/astack/INDEX.md)
  * into projects on register.
  *
  * `content_hash` is computed at daemon startup by iterating the
@@ -551,7 +551,7 @@ export interface SystemSkill {
  *                             files are missing. The user still needs to
  *                             invoke the harness-init skill in the AI tool
  *                             chat to materialize AGENTS.md +
- *                             docs/version/INDEX.md.
+ *                             docs/astack/INDEX.md.
  *   - "drift"               — seed dir exists but its hash differs from the
  *                             built-in version (user modified it); will be
  *                             overwritten on the next Re-install.
@@ -589,7 +589,7 @@ export type HarnessStatus = (typeof HarnessStatus)[keyof typeof HarnessStatus];
  */
 export const HARNESS_SCAFFOLD_FILES: readonly string[] = [
   "AGENTS.md",
-  "docs/version/INDEX.md"
+  "docs/astack/INDEX.md"
 ];
 
 /**

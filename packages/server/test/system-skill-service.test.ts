@@ -42,7 +42,7 @@ interface TestCtx {
 }
 
 /**
- * Create the full Harness Spec scaffold (AGENTS.md + docs/version/INDEX.md) so
+ * Create the full Harness Spec scaffold (AGENTS.md + docs/astack/INDEX.md) so
  * assertions that focus purely on the skill-level lifecycle (installed /
  * drift / missing / seed_failed) don't accidentally fall through to
  * `scaffold_incomplete` just because the test project is an empty dir.
@@ -424,7 +424,7 @@ describe("SystemSkillService — scaffold detection", () => {
 
     const state = await ctx.service.inspect(ctx.projectId, SKILL_ID);
     expect(state.status).toBe(HarnessStatus.ScaffoldIncomplete);
-    expect(state.scaffold.missing).toEqual(["docs/version/INDEX.md"]);
+    expect(state.scaffold.missing).toEqual(["docs/astack/INDEX.md"]);
   });
 
   it("full scaffold + clean skill → installed with complete=true, missing=[]", async () => {
