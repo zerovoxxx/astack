@@ -1,12 +1,10 @@
-# astack
+# {{PROJECT_NAME}}
 
 > 本文件是项目的轻量导航入口。详细方案以 `docs/astack/version/*_SPEC.md` 为准。
 
 ## 1. 项目定位
 
-Astack 是 AI Coding 技能跨项目管理工具，用 CLI、后端 daemon 和 Web Dashboard 管理 Claude Code / Cursor / CodeBuddy 项目的 skills、commands、插件 marketplace 与订阅同步。
-
-当前仓库同时维护运行时 packages 和内置 `astack-marketplace/plugins/astack-workflow` 插件；后者提供 `harness-init`、`spec`、`plan`、`dev`、`ship` 四流程。
+{{PROJECT_DESC}}
 
 ## 2. 核心开发原则
 
@@ -47,33 +45,28 @@ Astack 是 AI Coding 技能跨项目管理工具，用 CLI、后端 daemon 和 W
 
 1. Spec 驱动：有明确行为变化时，先写或更新对应 SPEC。
 2. 单一权威：目标、边界、设计、验收和重要结论优先写在 SPEC 本文。
-3. 最小改动：只修改当前 SPEC 涉及的文件和模块。
+3. 影响面可解释：跨模块、接口、数据流或运行流程变更必须先写清涉及文件和原因。
 4. 机械校验优先：能用 lint / test / script 检查的规则，不靠人工记忆。
-5. 证据先于完成：声明完成前必须运行本次变更对应的验证命令，并在 SPEC 或汇报中记录命令与结果。
-6. 轻量维护：默认不维护 sidecar 文档，除非用户明确要求专项报告。
+5. 轻量维护：默认不维护 sidecar 文档，除非用户明确要求专项报告。
 
 ## 3. 扩展原则
 
-### 3.1 技术栈边界
+> 本节预留给不同项目补充自己的工程约束。未补充前，不应凭空推断技术栈、架构分层或领域禁令。
 
-- Monorepo package：`@astack/shared`、`@astack/server`、`@astack/cli`、`@astack/web`。
-- 后端：Hono + SQLite + git 操作 + SSE；Node.js 必须满足 `>=22.13.0`。
-- 前端：React + Vite + Tailwind；Harness 面板状态以 `@astack/shared` 的 domain contract 为准。
-- 内置插件：`astack-marketplace/plugins/astack-workflow/` 同时遵循 Claude Code `.claude-plugin` 与 Codex `.codex-plugin` marketplace 协议。
-- 项目本地安装：`.claude/skills/{harness-init,spec,plan,dev,ship}` 来自当前仓库最新 `astack-workflow` 插件源；`.agents` 是指向 `.claude` 的兼容软链。
+（待补充：项目专属技术栈、架构边界、命名规则、领域红线、验证命令或发布流程。）
 
 ## 4. 权威文档
 
-- `docs/astack/INDEX.md` — 新 Harness 工作流的版本 / 迭代 / SPEC 索引。
-- `docs/astack/version/Iteration<N>_<Slug>_SPEC.md` — 迭代 SPEC 的默认位置。
-- `docs/astack/plan/Iteration<N>_<Slug>_PLAN.md` — 仅复杂任务使用的执行计划。
+- `docs/astack/INDEX.md` — 版本 / 迭代 / SPEC 索引
+- `docs/astack/version/Iteration<N>_<Slug>_SPEC.md` — 迭代设计文档，目标与边界的唯一权威
+- `docs/astack/plan/Iteration<N>_<Slug>_PLAN.md` — 仅复杂任务使用的执行计划
 
 ## 5. Spec 工作流
 
 默认只使用四个核心流程：
 
 ```text
-/astack-workflow:spec  ->  /astack-workflow:plan  ->  /astack-workflow:dev  ->  /astack-workflow:ship
+/astack-workflow:spec  →  /astack-workflow:plan  →  /astack-workflow:dev  →  /astack-workflow:ship
 想清楚要做什么              拆开复杂任务               开始执行                  验证、提交、推送
 ```
 
@@ -82,25 +75,33 @@ Astack 是 AI Coding 技能跨项目管理工具，用 CLI、后端 daemon 和 W
 - `/astack-workflow:dev`：按 SPEC 或 PLAN 实施代码变更，运行验证命令并把证据写回 SPEC。
 - `/astack-workflow:ship`：做最终新鲜验证、状态流转、提交并推送。
 
-## 5.1 轻量验证门
+## 5.1 设计与影响面
 
-1. SPEC 阶段写清楚至少 1 条机械验证命令；纯文档变更可写 `git diff --check`。
+当用户要求需求设计、方案设计、影响面分析或跨组件变更时，先完成轻量设计再编码。小范围文档或单文件修正可以裁剪，但不得跳过假设、影响面和验证目标。
+
+SPEC 至少写清：
+
+- 背景与目标：做什么、不做什么、为什么现在做。
+- 假设与约束：哪些来自用户，哪些来自代码搜索，哪些是推断。
+- 影响面：涉及哪些组件、文件、接口或数据流，以及为什么必然涉及。
+- 改动清单：按文件标注 `NEW` / `MODIFY`，避免无关扩散。
+- 验证计划：至少 1 条可执行命令；纯文档变更可写 `git diff --check`。
+
+## 5.2 轻量验证门
+
+1. SPEC 阶段写清楚至少 1 条机械验证命令。
 2. DEV 阶段每完成一个可独立交付的任务，运行对应验证命令；失败则停止并记录失败原因。
 3. SHIP 阶段只接受本轮新鲜验证结果，不用早先的“应该通过”或局部检查替代完整证据。
 4. 验证记录只写命令、结果、日期和必要备注，不维护额外 review / retro 文档。
 
-## 5.2 命名规范
+## 5.3 编码红线
 
-1. SPEC 文件统一命名为 `docs/astack/version/Iteration<N>_<PascalSlug>_SPEC.md`。
-2. 复杂任务 PLAN 命名为 `docs/astack/plan/Iteration<N>_<PascalSlug>_PLAN.md`。
-3. `<N>` 是从 1 开始递增的物理序号，由对应 INDEX 现有最大序号 + 1 得出。
-4. 业务版本号 `v<major>.<minor>` 维护在 INDEX 表格中，与物理序号解耦。
-5. 泛技术笔记走 `docs/<topic>/`，不占用 `Iteration<N>_*` 命名空间。
+- 不自造命名；新增文件名、类名、函数名、字段名、常量名前先 `rg` 同类实现。
+- 不为未来扩展新增配置项、Handler、Filter 或抽象。
+- 不修改无关代码的格式、注释或逻辑。
+- 复用已有数据流；上游已经取得的数据，不重复请求或跨层查询。
+- 复杂逻辑必须有针对性测试；没有新鲜验证，不声明完成。
 
 ## 6. 当前活跃迭代
 
-**当前 SPEC：** v0.13 — Harness docs layout and CLAUDE template refinement（2026-06-19，[spec](docs/astack/version/Iteration12_HarnessDocsLayout_SPEC.md)）— 将 harness scaffold 收敛为 `CLAUDE.md` 主文件、`AGENTS.md -> CLAUDE.md` 软链和 `docs/astack/{INDEX.md,version,plan}`。
-
-**最近完成：** v0.12 — Plugin Marketplace 布局（2026-05-13，[spec](docs/astack/version/Iteration11_PluginMarketplaceLayout_SPEC.md)）— 扫描 `<root>/<plugin>/{skills,commands,agents}/` 二级容器，并通过 `<plugin>/<inner>` 解决跨 plugin 同名。
-
-更多迭代见 [`docs/astack/INDEX.md`](docs/astack/INDEX.md)。
+（无活跃迭代）

@@ -525,8 +525,8 @@ export interface ProjectStatus {
  * separate domain concept from `Skill`.
  *
  * v0.4 ships exactly one: `harness-init`, which seeds the lightweight
- * Harness Spec workflow scaffold (AGENTS.md + docs/version/INDEX.md)
- * into projects on register.
+ * Harness Spec workflow scaffold (CLAUDE.md + AGENTS.md symlink +
+ * docs/astack/INDEX.md) into projects on register.
  *
  * `content_hash` is computed at daemon startup by iterating the
  * bundled source directory; used to detect drift when a project's
@@ -550,8 +550,8 @@ export interface SystemSkill {
  *   - "scaffold_incomplete" — seed dir is fine, but one or more governance
  *                             files are missing. The user still needs to
  *                             invoke the harness-init skill in the AI tool
- *                             chat to materialize AGENTS.md +
- *                             docs/version/INDEX.md.
+ *                             chat to materialize CLAUDE.md + AGENTS.md +
+ *                             docs/astack/INDEX.md.
  *   - "drift"               — seed dir exists but its hash differs from the
  *                             built-in version (user modified it); will be
  *                             overwritten on the next Re-install.
@@ -588,8 +588,9 @@ export type HarnessStatus = (typeof HarnessStatus)[keyof typeof HarnessStatus];
  * `astack-marketplace/plugins/astack-workflow/skills/harness-init/`.
  */
 export const HARNESS_SCAFFOLD_FILES: readonly string[] = [
+  "CLAUDE.md",
   "AGENTS.md",
-  "docs/version/INDEX.md"
+  "docs/astack/INDEX.md"
 ];
 
 /**
@@ -736,7 +737,7 @@ export interface ApplyResolutionsResult {
 }
 
 // ============================================================
-// Local skills (v0.7) — see docs/version/Iteration6_LocalSkills_SPEC.md
+// Local skills (v0.7) — see docs/astack/version/Iteration6_LocalSkills_SPEC.md
 // ============================================================
 
 /**

@@ -23,7 +23,7 @@
  * seed that's registered with any other status (ready, seeding) is
  * left alone.
  *
- * See docs/version/Iteration1_SqliteAndMultiRepo_SPEC.md § 2 (accepted risks)
+ * See docs/astack/version/Iteration1_SqliteAndMultiRepo_SPEC.md § 2 (accepted risks)
  * and § PR4 for the surrounding design.
  */
 

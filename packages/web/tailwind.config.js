@@ -11,7 +11,7 @@
  *   - Typography hierarchy does the work normally done by color + badges.
  *   - Spacing is non-uniform (12/20/24/32, not 16/16/16).
  *
- * See the proposal in docs/version/v0.2-*.md → design redesign.
+ * See the proposal in docs/astack/version/Iteration2_ProjectDetailRedesign_SPEC.md.
  */
 
 /** @type {import('tailwindcss').Config} */

@@ -2,15 +2,15 @@
 # init-harness.sh — Harness 研发流程初始化
 #
 # 在项目根目录运行，自动检测项目状态并初始化轻量 Spec 工作流：
-#   - fresh：   全新项目，从 templates/ 渲染 AGENTS.md + INDEX.md
-#   - migrate： 已有 AGENTS.md 但无 INDEX.md，备份 AGENTS.md 并创建 INDEX.md，等待 AI 接手语义迁移
-#   - patch：   已初始化，补齐缺失的 AGENTS.md / INDEX.md 入口
+#   - fresh：   全新项目，从 templates/ 渲染 CLAUDE.md + INDEX.md，并创建 AGENTS.md 软链
+#   - migrate： 已有 AGENTS.md/CLAUDE.md 但无 INDEX.md，迁移为 CLAUDE.md 主文件 + AGENTS.md 软链
+#   - patch：   已初始化，补齐缺失的 CLAUDE.md / AGENTS.md / INDEX.md 入口
 #
 # 模板来源：与本脚本同目录的 ../templates/*.tpl
-# 占位符：{{PROJECT_NAME}}、{{PROJECT_DESC}}（仅 AGENTS.md.tpl 使用）
+# 占位符：{{PROJECT_NAME}}、{{PROJECT_DESC}}（仅 CLAUDE.md.tpl 使用）
 #
-# 副作用：创建 AGENTS.md 后，同时建立 CLAUDE.md → AGENTS.md 软链，
-#         让 Claude / Cursor / Codebuddy 等工具共享同一份治理入口。
+# 副作用：创建 CLAUDE.md 后，同时建立 AGENTS.md → CLAUDE.md 软链，
+#         让 Claude / Codex / Cursor / Codebuddy 等工具共享同一份治理入口。
 #         三种模式（fresh / migrate / patch）下均会幂等确保该软链存在。
 #
 # 用法:
@@ -20,7 +20,7 @@
 #   --name <项目名>     项目名称（不提供则交互式询问，仅 fresh 模式需要）
 #   --desc <描述>       一句话项目描述（仅 fresh 模式需要）
 #   --dry-run           只输出计划，不实际修改
-#   --force             覆盖已存在的入口文件（含 CLAUDE.md 非预期软链）
+#   --force             覆盖已存在的入口文件（含 AGENTS.md 非预期文件/软链）
 #   --help              显示帮助
 
 set -euo pipefail
@@ -29,6 +29,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 TEMPLATES_DIR="$SKILL_DIR/templates"
+HARNESS_DOCS_DIR="docs/astack"
+HARNESS_VERSION_DIR="$HARNESS_DOCS_DIR/version"
+HARNESS_PLAN_DIR="$HARNESS_DOCS_DIR/plan"
+HARNESS_INDEX_PATH="$HARNESS_DOCS_DIR/INDEX.md"
 
 # ── 颜色 ──
 RED='\033[0;31m'
@@ -99,64 +103,66 @@ render_template() {
     success "创建 $target"
 }
 
-# 幂等确保 CLAUDE.md → AGENTS.md 软链存在
+# 幂等确保 AGENTS.md → CLAUDE.md 软链存在
 # 设计要点：
-#   - 仅在当前目录已存在 AGENTS.md（或软链）时创建，避免空链
+#   - 仅在当前目录已存在 CLAUDE.md（普通文件）时创建，避免空链
 #   - 已是正确软链时静默跳过（idempotent）
 #   - 已是其它软链或普通文件时默认跳过；--force 才覆盖
 #   - 尊重 --dry-run
-ensure_claude_md_symlink() {
-    if [ ! -f "AGENTS.md" ] && [ ! -L "AGENTS.md" ]; then
-        warn "AGENTS.md 不存在，跳过 CLAUDE.md 软链创建"
+ensure_agents_md_symlink() {
+    if [ ! -f "CLAUDE.md" ] || [ -L "CLAUDE.md" ]; then
+        warn "CLAUDE.md 主文件不存在，跳过 AGENTS.md 软链创建"
         return
     fi
 
-    if [ -L "CLAUDE.md" ]; then
+    if [ -L "AGENTS.md" ]; then
         local current_target
-        current_target="$(readlink CLAUDE.md)"
-        if [ "$current_target" = "AGENTS.md" ]; then
-            info "CLAUDE.md → AGENTS.md 软链已存在，跳过"
+        current_target="$(readlink AGENTS.md)"
+        if [ "$current_target" = "CLAUDE.md" ]; then
+            info "AGENTS.md → CLAUDE.md 软链已存在，跳过"
             return
         fi
-        warn "CLAUDE.md 已是软链但指向 '$current_target'（非 AGENTS.md）"
+        warn "AGENTS.md 已是软链但指向 '$current_target'（非 CLAUDE.md）"
         if [ "$FORCE" != true ]; then
             warn "  跳过（使用 --force 覆盖）"
             return
         fi
         if [ "$DRY_RUN" = true ]; then
-            info "[dry-run] 将删除并重建 CLAUDE.md → AGENTS.md"
+            info "[dry-run] 将删除并重建 AGENTS.md → CLAUDE.md"
             return
         fi
-        rm -f "CLAUDE.md"
-    elif [ -e "CLAUDE.md" ]; then
-        warn "CLAUDE.md 已存在为普通文件（非软链）"
+        rm -f "AGENTS.md"
+    elif [ -e "AGENTS.md" ]; then
+        warn "AGENTS.md 已存在为普通文件（非软链）"
         if [ "$FORCE" != true ]; then
             warn "  跳过（使用 --force 覆盖；请自行备份）"
             return
         fi
         if [ "$DRY_RUN" = true ]; then
-            info "[dry-run] 将删除并替换为 CLAUDE.md → AGENTS.md 软链"
+            info "[dry-run] 将删除并替换为 AGENTS.md → CLAUDE.md 软链"
             return
         fi
-        rm -f "CLAUDE.md"
+        rm -f "AGENTS.md"
     fi
 
     if [ "$DRY_RUN" = true ]; then
-        info "[dry-run] 将创建软链 CLAUDE.md → AGENTS.md"
+        info "[dry-run] 将创建软链 AGENTS.md → CLAUDE.md"
         return
     fi
 
-    ln -s AGENTS.md CLAUDE.md
-    CREATED_FILES+=("CLAUDE.md (软链 → AGENTS.md)")
-    success "创建软链 CLAUDE.md → AGENTS.md"
+    ln -s CLAUDE.md AGENTS.md
+    CREATED_FILES+=("AGENTS.md (软链 → CLAUDE.md)")
+    success "创建软链 AGENTS.md → CLAUDE.md"
 }
 
 # 验证轻量 Spec scaffold 是否可用。
 validate_lightweight_scaffold() {
     action "验证轻量 Spec scaffold"
 
-    local required_files=("AGENTS.md" "docs/version/INDEX.md")
+    local required_files=("CLAUDE.md" "AGENTS.md" "$HARNESS_INDEX_PATH")
     local missing=()
+    local required_dirs=("$HARNESS_VERSION_DIR" "$HARNESS_PLAN_DIR")
+    local missing_dirs=()
 
     for file in "${required_files[@]}"; do
         if [ "$DRY_RUN" = true ]; then
@@ -166,8 +172,16 @@ validate_lightweight_scaffold() {
         fi
     done
 
+    for dir in "${required_dirs[@]}"; do
+        if [ "$DRY_RUN" = true ]; then
+            info "[dry-run] 将验证 $dir/ 存在"
+        elif [ ! -d "$dir" ]; then
+            missing_dirs+=("$dir")
+        fi
+    done
+
     if [ "$DRY_RUN" = true ]; then
-        info "[dry-run] 将验证 CLAUDE.md → AGENTS.md 软链（若适用）"
+        info "[dry-run] 将验证 AGENTS.md → CLAUDE.md 软链"
         return
     fi
 
@@ -176,14 +190,25 @@ validate_lightweight_scaffold() {
         exit 1
     fi
 
-    if [ -L "CLAUDE.md" ] && [ "$(readlink CLAUDE.md)" != "AGENTS.md" ]; then
-        echo -e "${RED}错误${NC}: CLAUDE.md 软链未指向 AGENTS.md"
+    if [ ${#missing_dirs[@]} -gt 0 ]; then
+        echo -e "${RED}错误${NC}: 轻量 Spec scaffold 缺失目录: ${missing_dirs[*]}"
+        exit 1
+    fi
+
+    if [ -L "CLAUDE.md" ]; then
+        echo -e "${RED}错误${NC}: CLAUDE.md 必须是主文件，不应是软链"
+        exit 1
+    fi
+
+    if [ ! -L "AGENTS.md" ] || [ "$(readlink AGENTS.md)" != "CLAUDE.md" ]; then
+        echo -e "${RED}错误${NC}: AGENTS.md 软链未指向 CLAUDE.md"
         exit 1
     fi
 
     success "轻量 Spec scaffold 验证通过: ${required_files[*]}"
 
     local legacy_files=(
+        "docs/astack/INDEX.md"
         "docs/version/BOUNDARIES.md"
         "docs/retro/golden-rules.md"
         "docs/retro/patterns.md"
@@ -203,15 +228,32 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 HAS_AGENTS_MD=false
+HAS_AGENTS_LINK=false
+HAS_CLAUDE_MD=false
+HAS_CLAUDE_CANONICAL=false
 HAS_INDEX_MD=false
 
-[ -f "AGENTS.md" ] && HAS_AGENTS_MD=true
-[ -f "docs/version/INDEX.md" ] && HAS_INDEX_MD=true
+if [ -e "AGENTS.md" ] || [ -L "AGENTS.md" ]; then
+    HAS_AGENTS_MD=true
+fi
+if [ -L "AGENTS.md" ] && [ "$(readlink AGENTS.md)" = "CLAUDE.md" ]; then
+    HAS_AGENTS_LINK=true
+fi
+if [ -e "CLAUDE.md" ] || [ -L "CLAUDE.md" ]; then
+    HAS_CLAUDE_MD=true
+fi
+if [ -f "CLAUDE.md" ] && [ ! -L "CLAUDE.md" ]; then
+    HAS_CLAUDE_CANONICAL=true
+fi
+if [ -f "$HARNESS_INDEX_PATH" ]; then
+    HAS_INDEX_MD=true
+fi
 
 info "项目目录: $(pwd)"
 info "Skill 目录: $SKILL_DIR"
 info "AGENTS.md: $( [ "$HAS_AGENTS_MD" = true ] && echo '已存在' || echo '不存在' )"
-info "docs/version/INDEX.md: $( [ "$HAS_INDEX_MD" = true ] && echo '已存在' || echo '不存在' )"
+info "CLAUDE.md: $( [ "$HAS_CLAUDE_MD" = true ] && echo '已存在' || echo '不存在' )"
+info "$HARNESS_INDEX_PATH: $( [ "$HAS_INDEX_MD" = true ] && echo '已存在' || echo '不存在' )"
 echo ""
 
 # 检查模板目录
@@ -223,11 +265,11 @@ fi
 
 # ── 判断模式 ──
 
-if [ "$HAS_AGENTS_MD" = true ] && [ "$HAS_INDEX_MD" = true ]; then
+if [ "$HAS_CLAUDE_CANONICAL" = true ] && [ "$HAS_AGENTS_LINK" = true ] && [ "$HAS_INDEX_MD" = true ]; then
     info "检测到已完成 harness 初始化，将检查并补全缺失文件"
     MODE="patch"
-elif [ "$HAS_AGENTS_MD" = true ]; then
-    info "检测到已有 AGENTS.md，将执行迁移瘦身（备份原文件 + 创建空骨架）"
+elif [ "$HAS_CLAUDE_MD" = true ] || [ "$HAS_AGENTS_MD" = true ]; then
+    info "检测到已有治理入口，将执行迁移瘦身（CLAUDE.md 主文件 + AGENTS.md 软链）"
     MODE="migrate"
 else
     info "全新项目，将从零初始化"
@@ -256,30 +298,45 @@ fi
 action "创建目录结构"
 
 if [ "$DRY_RUN" = true ]; then
-    info "[dry-run] mkdir -p docs/version"
+    info "[dry-run] mkdir -p $HARNESS_VERSION_DIR $HARNESS_PLAN_DIR"
 else
-    mkdir -p docs/version
-    success "docs/version/"
+    mkdir -p "$HARNESS_VERSION_DIR" "$HARNESS_PLAN_DIR"
+    success "$HARNESS_DOCS_DIR/（含 version/、plan/）"
 fi
 
 echo ""
 
-# ── 2. 创建/迁移 AGENTS.md ──
+# ── 2. 创建/迁移 CLAUDE.md ──
 
 if [ "$MODE" = "fresh" ]; then
-    action "创建 AGENTS.md"
-    render_template "AGENTS.md.tpl" "AGENTS.md" || true
+    action "创建 CLAUDE.md"
+    render_template "CLAUDE.md.tpl" "CLAUDE.md" || true
 
 elif [ "$MODE" = "migrate" ]; then
-    action "迁移 AGENTS.md"
+    action "迁移 CLAUDE.md / AGENTS.md"
 
     if [ "$DRY_RUN" = true ]; then
-        info "[dry-run] 将备份 AGENTS.md → AGENTS.md.bak"
-        info "[dry-run] AGENTS.md 迁移需要 AI 辅助执行，请在 Skill 会话中继续"
+        [ "$HAS_CLAUDE_CANONICAL" != true ] && info "[dry-run] 将创建 CLAUDE.md 主文件（优先从既有 AGENTS.md 迁移）"
+        [ "$HAS_AGENTS_LINK" != true ] && info "[dry-run] 将备份并替换 AGENTS.md → CLAUDE.md 软链"
+        info "[dry-run] CLAUDE.md 内容迁移需要 AI 辅助执行，请在 Skill 会话中继续"
     else
-        cp AGENTS.md AGENTS.md.bak
-        success "备份 AGENTS.md → AGENTS.md.bak"
-        warn "AGENTS.md 的内容迁移（章节识别、拆分、重写）需要 AI 辅助"
+        if [ "$HAS_CLAUDE_CANONICAL" != true ]; then
+            [ -L "CLAUDE.md" ] && rm -f "CLAUDE.md"
+            if [ -f "AGENTS.md" ]; then
+                cp AGENTS.md CLAUDE.md
+                success "从 AGENTS.md 创建 CLAUDE.md 主文件"
+            else
+                render_template "CLAUDE.md.tpl" "CLAUDE.md" || true
+            fi
+        fi
+
+        if [ "$HAS_AGENTS_LINK" != true ] && [ "$HAS_AGENTS_MD" = true ]; then
+            cp -P AGENTS.md AGENTS.md.bak
+            rm -f AGENTS.md
+            success "备份 AGENTS.md → AGENTS.md.bak"
+        fi
+
+        warn "CLAUDE.md 的内容迁移（章节识别、拆分、重写）需要 AI 辅助"
         warn "请返回 Skill 会话，按 SKILL.md 的「第 2 步：AI 接手语义迁移」继续"
         echo ""
     fi
@@ -287,18 +344,18 @@ fi
 
 echo ""
 
-# ── 2.5. 创建 CLAUDE.md → AGENTS.md 软链 ──
-# 三种模式都执行：fresh 刚渲染完 AGENTS.md，migrate / patch 也补齐老项目缺失的软链。
-# 让 Claude / Cursor / Codebuddy 等工具共享同一份治理入口。
+# ── 2.5. 创建 AGENTS.md → CLAUDE.md 软链 ──
+# 三种模式都执行：fresh 刚渲染完 CLAUDE.md，migrate / patch 也补齐老项目缺失的软链。
+# 让 Claude / Codex / Cursor / Codebuddy 等工具共享同一份治理入口。
 
-action "确保 CLAUDE.md → AGENTS.md 软链"
-ensure_claude_md_symlink
+action "确保 AGENTS.md → CLAUDE.md 软链"
+ensure_agents_md_symlink
 
 echo ""
 
 # ── 3. 从模板渲染轻量治理文档（仅缺失时） ──
 
-[ "$HAS_INDEX_MD" = false ]       && action "创建 docs/version/INDEX.md"       && render_template "INDEX.md.tpl"       "docs/version/INDEX.md"       || true
+[ "$HAS_INDEX_MD" = false ]       && action "创建 $HARNESS_INDEX_PATH"       && render_template "INDEX.md.tpl"       "$HARNESS_INDEX_PATH"       || true
 
 echo ""
 
@@ -362,18 +419,21 @@ fi
 if [ "$MODE" = "migrate" ] && [ "$DRY_RUN" != true ]; then
     echo ""
     echo -e "${YELLOW}待处理:${NC}"
-    echo "  - 返回 Skill 会话完成 AGENTS.md 的语义迁移（脚本只做了机械备份）"
+    echo "  - 返回 Skill 会话完成 CLAUDE.md 的语义迁移（脚本只做了机械备份/复制）"
     echo "  - 迁移完成后可删除 AGENTS.md.bak"
 fi
 
 echo ""
 echo "项目结构:"
 echo "  ."
-[ -L "CLAUDE.md" ] && echo "  ├── CLAUDE.md → AGENTS.md"
-[ -f "AGENTS.md" ] && echo "  ├── AGENTS.md"
+[ -f "CLAUDE.md" ] && [ ! -L "CLAUDE.md" ] && echo "  ├── CLAUDE.md"
+[ -L "AGENTS.md" ] && echo "  ├── AGENTS.md → CLAUDE.md"
+[ -f "AGENTS.md" ] && [ ! -L "AGENTS.md" ] && echo "  ├── AGENTS.md"
 echo "  └── docs/"
-echo "      ├── version/"
-[ -f "docs/version/INDEX.md" ] && echo "      │   ├── INDEX.md"
+echo "      └── astack/"
+[ -f "$HARNESS_INDEX_PATH" ] && echo "          ├── INDEX.md"
+echo "          ├── version/"
+echo "          └── plan/"
 
 echo ""
 if [ "$MODE" = "fresh" ]; then
