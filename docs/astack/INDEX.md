@@ -6,7 +6,7 @@
 
 | 迭代 | 标题 | 状态 | 文档 | 创建日期 |
 |------|------|------|------|---------|
-| v0.13 | Harness docs layout：生成 `CLAUDE.md`、`AGENTS.md` 软链与 `docs/astack/{INDEX.md,version,plan}` | IMPLEMENTED（验证通过） | [Iteration12_HarnessDocsLayout_SPEC.md](./version/Iteration12_HarnessDocsLayout_SPEC.md) | 2026-06-19 |
+| v0.13 | Harness docs layout：生成 `CLAUDE.md`、`AGENTS.md` 软链与 `docs/astack/{INDEX.md,version,plan}` | 已完成 | [Iteration12_HarnessDocsLayout_SPEC.md](./version/Iteration12_HarnessDocsLayout_SPEC.md) | 2026-06-19 |
 | v0.12 | Plugin Marketplace 布局：扫描 `<root>/<plugin>/{skills,commands,agents}/` 二级容器 | IMPLEMENTED（PR1–PR3 已落地） | [Iteration11_PluginMarketplaceLayout_SPEC.md](./version/Iteration11_PluginMarketplaceLayout_SPEC.md) | 2026-05-13 |
 | v0.11 | Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊 | SHIPPED | [Iteration10_AutoSync_SPEC.md](./version/Iteration10_AutoSync_SPEC.md) | 2026-05-11 |
 | v0.10 | Force Refresh：脏 open-source 镜像的显式 reset + pull 入口 | IMPLEMENTED（单次合并，待 E2E 补测） | [Iteration9_ForceRefresh_SPEC.md](./version/Iteration9_ForceRefresh_SPEC.md) | 2026-05-10 |

@@ -23,9 +23,25 @@ description: |
 
 在 `docs/astack/plan/Iteration<N>_<Slug>_PLAN.md` 创建实现计划，并在文档开头链接来源 SPEC。
 
+文档开头必须使用与 SPEC 一致的 `文档信息` 表。`作者` 优先填写当前仓库 `git config user.name` 的结果；为空时写 `AI`：
+
+```markdown
+> **文档信息**
+>
+> | 字段 | 值 |
+> |---|---|
+> | 文档类型 | PLAN |
+> | 文档状态 | 待执行 |
+> | 创建日期 | YYYY-MM-DD |
+> | 最后更新 | YYYY-MM-DD |
+> | 作者 | `<git config user.name>`，为空则 `AI` |
+> | 关联文档 | [Iteration<N>_<Slug>_SPEC.md](../version/Iteration<N>_<Slug>_SPEC.md) |
+> | 一句话目标 | 用一句话描述本计划要拆解和验证的交付结果。 |
+```
+
 包含：
 
-- SPEC 来源链接与版本。
+- 来源 SPEC 链接。
 - 文件地图：文件、操作、职责。
 - 带语义锚点的有序任务（不使用脆弱的行号）。
 - 具体执行步骤。

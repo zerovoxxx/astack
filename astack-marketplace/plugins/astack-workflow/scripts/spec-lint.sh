@@ -39,6 +39,35 @@ has_pattern() {
     grep -Eq "$pattern" "$file" 2>/dev/null
 }
 
+has_document_info_field() {
+    local field="$1"
+    local file="$2"
+    grep -Eq "^[>[:space:]]*\\|[[:space:]]*$field[[:space:]]*\\|" "$file" 2>/dev/null
+}
+
+extract_document_status() {
+    local file="$1"
+    local line
+    line=$(grep '文档状态' "$file" | head -1 || true)
+
+    if [[ "$line" == *"|"* ]]; then
+        echo "$line" | awk -F'|' '{
+            for (i = 1; i <= NF; i++) {
+                gsub(/^[ \t>]+|[ \t]+$/, "", $i)
+                if ($i == "文档状态" && i < NF) {
+                    value = $(i + 1)
+                    gsub(/^[ \t]+|[ \t]+$/, "", value)
+                    print value
+                    exit
+                }
+            }
+        }'
+        return
+    fi
+
+    echo "$line" | sed 's/.*文档状态[：: ]*//;s/\*\*//g;s/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
 TARGET="${1:-docs/astack/version}"
 INDEX_PATH="docs/astack/INDEX.md"
 
@@ -73,17 +102,27 @@ for FILE in "${FILES[@]}"; do
 
     if ! has_pattern '文档状态' "$FILE"; then
         error "$FILENAME: missing document status" \
-              "Add a line near the title, for example: > **文档状态: 设计中**"
+              "Add a 文档信息 table row, for example: > | 文档状态 | 待实施 |"
     else
-        STATUS=$(grep '文档状态' "$FILE" | head -1 | sed 's/.*文档状态[：: ]*//;s/\*\*//g;s/^[[:space:]]*//;s/[[:space:]]*$//')
+        STATUS=$(extract_document_status "$FILE")
         case "$STATUS" in
-            *设计中*|*待实施*|*开发中*|*验证中*|*开发完成*|*已完成*|*阻塞*|*完成*)
+            设计中|待实施|开发中|验证中|验证通过|已完成|阻塞)
                 ok "document status: $STATUS"
                 ;;
             *)
-                warn "$FILENAME: uncommon document status '$STATUS'"
+                warn "$FILENAME: non-standard document status '$STATUS' (expected one of: 设计中, 待实施, 开发中, 验证中, 验证通过, 已完成, 阻塞)"
                 ;;
         esac
+    fi
+
+    for FIELD in 文档类型 文档状态 创建日期 最后更新 作者 关联文档 一句话目标; do
+        if ! has_document_info_field "$FIELD" "$FILE"; then
+            warn "$FILENAME: missing 文档信息 field '$FIELD'"
+        fi
+    done
+
+    if has_document_info_field "文档类型" "$FILE" && ! grep -Eq '^[>[:space:]]*\|[[:space:]]*文档类型[[:space:]]*\|[[:space:]]*SPEC[[:space:]]*\|' "$FILE"; then
+        warn "$FILENAME: 文档类型 should be SPEC"
     fi
 
     if has_pattern '目标|背景|缘起|In scope|本次迭代的边界' "$FILE"; then

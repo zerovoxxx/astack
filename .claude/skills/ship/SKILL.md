@@ -42,8 +42,8 @@ ruff check . --fix
 验证通过后：
 
 1. 将变更文件与相关 `docs/astack/version/Iteration*_SPEC.md` 匹配。
-2. 将匹配的 SPEC 状态设为 `已完成`。
-3. 更新对应 `docs/astack/INDEX.md` 的状态。
+2. 将匹配的 SPEC `文档状态` 设为 `已完成`，并更新 `文档信息` 表的 `最后更新` 日期。
+3. 更新对应 `docs/astack/INDEX.md` 的状态为 `已完成`。
 4. 在 `INDEX.md` 追加一行简洁的变更日志。
 
 默认不创建评审或复盘旁路文件。
