@@ -39,12 +39,12 @@ ruff check . --fix
 
 ## SPEC 与 INDEX 流程
 
-验证通过后：
+验证 PASS 后：
 
 1. 将变更文件与相关 `docs/astack/version/Iteration*_SPEC.md` 匹配。
 2. 将匹配的 SPEC `文档状态` 设为 `已完成`，并更新 `文档信息` 表的 `最后更新` 日期。
 3. 更新对应 `docs/astack/INDEX.md` 的状态为 `已完成`。
-4. 在 `INDEX.md` 追加一行简洁的变更日志。
+4. 如本次变更对应 PLAN，将 PLAN `文档状态` 确认为 `已完成`。
 
 默认不创建评审或复盘旁路文件。
 
@@ -91,7 +91,7 @@ feat(market): 新增板块优先级评分与轮动分析
 
 ## Git 安全
 
-- 只在验证通过后提交。
+- 只在验证 PASS 后提交。
 - 暂存前检查 `git status --short --branch` 和 `git diff --stat`，只暂存目标文件。
 - 推送前若分支有上游跟踪，使用 rebase 拉取最新。
 - 出现 rebase 冲突时，分析后询问用户再处理。

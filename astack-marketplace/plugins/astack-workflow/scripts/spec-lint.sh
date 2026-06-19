@@ -106,11 +106,11 @@ for FILE in "${FILES[@]}"; do
     else
         STATUS=$(extract_document_status "$FILE")
         case "$STATUS" in
-            设计中|待实施|开发中|验证中|验证通过|已完成|阻塞)
+            待实施|开发中|已完成|阻塞)
                 ok "document status: $STATUS"
                 ;;
             *)
-                warn "$FILENAME: non-standard document status '$STATUS' (expected one of: 设计中, 待实施, 开发中, 验证中, 验证通过, 已完成, 阻塞)"
+                warn "$FILENAME: non-standard document status '$STATUS' (expected one of: 待实施, 开发中, 已完成, 阻塞)"
                 ;;
         esac
     fi

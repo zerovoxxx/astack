@@ -68,7 +68,7 @@
 - `AGETN.md` 按现有文件和 harness 语义判断为 `AGENTS.md`。
 - `docs/astack/INDEX.md` 是版本索引；SPEC 放在 `docs/astack/version/`；复杂任务 PLAN 放在 `docs/astack/plan/`。
 - SPEC / PLAN 的 `文档信息` 表统一为：`文档类型`、`文档状态`、`创建日期`、`最后更新`、`作者`、`关联文档`、`一句话目标`。业务版本只在 INDEX 维护，物理序号只由文件名表达；`作者` 优先取当前仓库 `git config user.name`，为空时写 `AI`。
-- SPEC 状态固定为 `设计中`、`待实施`、`开发中`、`验证中`、`验证通过`、`已完成`、`阻塞`；标准流转为 `设计中 -> 待实施 -> 开发中 -> 验证中 -> 验证通过 -> 已完成`，`阻塞` 可从任意状态进入。
+- 全流程唯一状态控制为 5 个：SPEC 使用 `待实施`、`开发中`、`已完成`、`阻塞`；PLAN 使用 `待执行`、`已完成`。SPEC 标准流转为 `待实施 -> 开发中 -> 已完成`，PLAN 标准流转为 `待执行 -> 已完成`，`阻塞` 可从任意状态进入。
 - `HARNESS_SCAFFOLD_FILES` 要求 `CLAUDE.md`、`AGENTS.md` 与 `docs/astack/INDEX.md` 存在；`version/` 和 `plan/` 目录由脚本创建，但不作为 server scaffold 完整性的文件项。
 - `CLAUDE.md` 是治理主文件，`AGENTS.md` 必须是指向 `CLAUDE.md` 的相对软链。
 - 本仓库存量 SPEC 已迁移到 `docs/astack/version/`；旧 review/archive sidecar 已删除。
@@ -90,7 +90,7 @@
 - Web Harness 面板显示的新 scaffold 路径为 `CLAUDE.md`、`AGENTS.md` 和 `docs/astack/INDEX.md`。
 - workflow skill 文档不再把新 harness 输出写成旧 version 目录。
 - `spec` / `plan` skill 文档中的 `文档信息` 示例字段一致，且不包含业务版本或物理序号字段；`作者` 字段说明优先取当前仓库 git 用户。
-- `dev` / `ship` skill 文档按固定 SPEC 状态枚举推进流转，不再使用 `开发完成（验证通过）`、`IMPLEMENTED`、`SHIPPED` 等混合描述作为新 SPEC 状态。
+- `dev` / `ship` skill 文档不再引入验证类过渡状态；SPEC 保留 `开发中`，并只在 `待实施`、`开发中`、`已完成`、`阻塞` 之间流转。
 - `CLAUDE.md` 模板原文包含 Karpathy 编程规范，并包含 `扩展原则` 占位符。
 - migrate 模式的 skill 说明要求读取既有 `CLAUDE.md`、`AGENTS.md`、README 和历史 SPEC 后再语义重构。
 
@@ -134,6 +134,16 @@
 | 2026-06-19 | `if rg -n '^> \| 作者 \| AI \|' .claude/skills/spec/SKILL.md .claude/skills/plan/SKILL.md astack-marketplace/plugins/astack-workflow/skills/spec/SKILL.md astack-marketplace/plugins/astack-workflow/skills/plan/SKILL.md; then exit 1; fi` | PASS | ship 前新鲜验证：SPEC / PLAN 示例未固定作者为 `AI`。 |
 | 2026-06-19 | `if rg -n '文档信息与状态|SPEC 状态只使用|标准流转为|文档类型.*文档状态' .claude/skills/harness-init/templates astack-marketplace/plugins/astack-workflow/skills/harness-init/templates; then exit 1; fi` | PASS | ship 前新鲜验证：模板未承载详细文档信息和状态流转规则。 |
 | 2026-06-19 | `git diff --check` | PASS | ship 前新鲜验证：whitespace 检查通过。 |
+| 2026-06-19 | `diff -qr .claude/skills astack-marketplace/plugins/astack-workflow/skills` | PASS | 本地安装副本与 marketplace 源目录保持一致。 |
+| 2026-06-19 | `bash -n astack-marketplace/plugins/astack-workflow/scripts/spec-lint.sh && bash astack-marketplace/plugins/astack-workflow/scripts/spec-lint.sh docs/astack/version/Iteration12_HarnessDocsLayout_SPEC.md` | PASS | lint 脚本语法通过；当前 SPEC 0 errors / 0 warnings，`开发中` 状态可被识别。 |
+| 2026-06-19 | `if rg -n "设计中\|验证中\|验证通过" .claude/skills/spec/SKILL.md .claude/skills/dev/SKILL.md .claude/skills/plan/SKILL.md .claude/skills/ship/SKILL.md astack-marketplace/plugins/astack-workflow/skills/spec/SKILL.md astack-marketplace/plugins/astack-workflow/skills/dev/SKILL.md astack-marketplace/plugins/astack-workflow/skills/plan/SKILL.md astack-marketplace/plugins/astack-workflow/skills/ship/SKILL.md astack-marketplace/plugins/astack-workflow/scripts/spec-lint.sh; then exit 1; fi` | PASS | workflow skill 和 SPEC lint 规则中不再出现已移除的文档状态词。 |
+| 2026-06-19 | `rg -n "全流程只使用 5 个唯一状态词\|PLAN 只使用两个状态\|待实施 -> 开发中 -> 已完成\|待执行 -> 已完成" .claude/skills astack-marketplace/plugins/astack-workflow/skills docs/astack/version/Iteration12_HarnessDocsLayout_SPEC.md` | PASS | SPEC 保留 `开发中`，PLAN 仅保留 `待执行` / `已完成` 的规则均存在。 |
+| 2026-06-19 | `git diff --check` | PASS | whitespace 检查通过。 |
+| 2026-06-19 | `bash -n astack-marketplace/plugins/astack-workflow/scripts/spec-lint.sh && bash astack-marketplace/plugins/astack-workflow/scripts/spec-lint.sh docs/astack/version/Iteration12_HarnessDocsLayout_SPEC.md` | PASS | ship 前新鲜验证：lint 脚本语法通过；当前 SPEC 0 errors / 0 warnings。 |
+| 2026-06-19 | `diff -qr .claude/skills astack-marketplace/plugins/astack-workflow/skills` | PASS | ship 前新鲜验证：本地安装副本与 marketplace 源目录一致。 |
+| 2026-06-19 | `if rg -n "设计中\|验证中\|验证通过" .claude/skills/spec/SKILL.md .claude/skills/dev/SKILL.md .claude/skills/plan/SKILL.md .claude/skills/ship/SKILL.md astack-marketplace/plugins/astack-workflow/skills/spec/SKILL.md astack-marketplace/plugins/astack-workflow/skills/dev/SKILL.md astack-marketplace/plugins/astack-workflow/skills/plan/SKILL.md astack-marketplace/plugins/astack-workflow/skills/ship/SKILL.md astack-marketplace/plugins/astack-workflow/scripts/spec-lint.sh; then exit 1; fi` | PASS | ship 前新鲜验证：workflow skill 和 SPEC lint 规则中不再出现已移除的文档状态词。 |
+| 2026-06-19 | `rg -n "全流程只使用 5 个唯一状态词\|PLAN 只使用两个状态\|待实施 -> 开发中 -> 已完成\|待执行 -> 已完成" .claude/skills astack-marketplace/plugins/astack-workflow/skills docs/astack/version/Iteration12_HarnessDocsLayout_SPEC.md` | PASS | ship 前新鲜验证：5 状态规则与 SPEC / PLAN 流转说明存在。 |
+| 2026-06-19 | `git diff --check` | PASS | ship 前新鲜验证：whitespace 检查通过。 |
 
 ## 9. 变更记录
 
@@ -145,6 +155,8 @@
 | 2026-06-19 | AI | 按反馈将治理入口改为 `CLAUDE.md` 主文件，`AGENTS.md` 改为指向 `CLAUDE.md` 的软链，并补充既有 `CLAUDE.md` 的语义迁移要求。 |
 | 2026-06-19 | AI | 按反馈迁移本仓库存量 SPEC 到 `docs/astack/version/`，删除旧 version/review/archive 文档，并瘦身根 `CLAUDE.md`。 |
 | 2026-06-19 | AI | 根目录新增 `.agents -> .claude` 兼容软链。 |
-| 2026-06-19 | AI | 统一 SPEC / PLAN 的 `文档信息` 表字段，并收敛 SPEC 状态枚举和流转规则；模板文件不承载详细规则。 |
+| 2026-06-19 | AI | 统一 SPEC / PLAN 的 `文档信息` 表字段，并将文档状态收敛为 5 个唯一状态；模板文件不承载详细规则。 |
 | 2026-06-19 | AI | 调整 SPEC / PLAN `作者` 字段规则，优先取当前仓库 `git config user.name`，为空时才写 `AI`。 |
 | 2026-06-19 | AI | 完成文档信息格式、SPEC 状态流转和作者字段规则的最终验证与交付状态更新。 |
+| 2026-06-19 | AI | 按反馈保留 SPEC `开发中`，移除设计和验证类过渡态；PLAN 状态收敛为 `待执行` / `已完成`。 |
+| 2026-06-19 | AI | 完成 5 状态流转规则的最终验证与交付状态更新。 |
