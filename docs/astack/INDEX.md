@@ -6,6 +6,7 @@
 
 | 迭代 | 标题 | 状态 | 文档 | 创建日期 |
 |------|------|------|------|---------|
+| v0.14 | Spec skill：复杂方案设计增加外部参照与设计取舍检查 | 已完成 | [Iteration13_SpecDesignReference_SPEC.md](./version/Iteration13_SpecDesignReference_SPEC.md) | 2026-06-20 |
 | v0.13 | Harness docs layout：生成 `CLAUDE.md`、`AGENTS.md` 软链与 `docs/astack/{INDEX.md,version,plan}` | 已完成 | [Iteration12_HarnessDocsLayout_SPEC.md](./version/Iteration12_HarnessDocsLayout_SPEC.md) | 2026-06-19 |
 | v0.12 | Plugin Marketplace 布局：扫描 `<root>/<plugin>/{skills,commands,agents}/` 二级容器 | IMPLEMENTED（PR1–PR3 已落地） | [Iteration11_PluginMarketplaceLayout_SPEC.md](./version/Iteration11_PluginMarketplaceLayout_SPEC.md) | 2026-05-13 |
 | v0.11 | Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊 | SHIPPED | [Iteration10_AutoSync_SPEC.md](./version/Iteration10_AutoSync_SPEC.md) | 2026-05-11 |
@@ -23,6 +24,8 @@
 
 | 日期 | 版本 | 作者 | 摘要 |
 |------|------|------|------|
+| 2026-06-20 | v0.14 | zerovoxxx | ship：完成 `spec` skill 外部参照规则增强的最终验证与状态更新。 |
+| 2026-06-20 | v0.14 | zerovoxxx | docs(workflow)：为 `spec` skill 增加复杂方案设计的外部参照与设计取舍检查。 |
 | 2026-06-19 | v0.13 | AI | docs：创建 Harness docs layout 与治理入口模板优化 SPEC。 |
 | 2026-06-19 | v0.13 | AI | feat(harness)：scaffold contract 改为 `docs/astack/INDEX.md` + `version/` + `plan/`，并同步治理入口模板与 Harness 状态检测。 |
 | 2026-06-19 | v0.13 | AI | docs(harness)：`CLAUDE.md` 模板原文保留 Karpathy 编程规范，并新增 `扩展原则` 占位符。 |
