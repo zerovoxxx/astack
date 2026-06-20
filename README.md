@@ -1,66 +1,208 @@
 # Astack
 
-> AI Coding 技能跨项目管理工具
+Manage AI coding skills across every project.
 
-一次维护、多处同步。把 `.claude/commands/` 和 `.claude/skills/` 从项目里解耦出来，集中到一个 git 仓库管理，用 CLI 和 Web 管控所有项目的订阅、同步、冲突。
+Astack is a local CLI, daemon, and web dashboard for people who reuse AI coding
+skills, commands, and workflow plugins across many repositories. Keep your best
+Claude Code style assets in Git-backed repositories, subscribe projects to the
+pieces they need, and sync updates without copying `.claude/` folders by hand.
 
-**支持的 AI 工具：** Claude Code（主）→ Cursor、CodeBuddy（通过 symlink 自动同步）
+It is built for individual AI coding power users and teams that want a shared,
+auditable way to distribute AI coding workflows.
 
-## Status
+## Why Astack?
 
-v1.0.3 — 规划完成，进入实现阶段。设计文档在 `docs/asset/design.md`（1002 行，35 个决策锁定）。
+AI coding workflows tend to start as local files:
+
+- a useful Claude Code skill in one project
+- a command that only exists in another repo
+- team conventions copied into `.claude/` by hand
+- Cursor or CodeBuddy directories that drift away from the source of truth
+
+That works for one project. It gets painful when you have ten.
+
+Astack turns those assets into managed subscriptions:
+
+- maintain skills, commands, agents, and workflow plugins in Git-backed repos
+- register projects that should consume them
+- subscribe each project to only the assets it needs
+- sync updates through a CLI, local daemon, and dashboard
+- inspect status, diffs, conflicts, and local edits before they spread
+- link secondary tool directories such as Cursor or CodeBuddy back to the same
+  `.claude/` source
+
+## Who It Is For
+
+- Individual developers who use AI coding tools across multiple repositories.
+- Teams that want to standardize prompts, skills, commands, and project
+  workflows without relying on manual copy/paste.
+- Maintainers building reusable skill or plugin collections for internal or
+  open-source use.
+
+## What You Get
+
+| Capability | What it means |
+|---|---|
+| CLI | `astack init`, `subscribe`, `sync`, `push`, `status`, `diff`, `resolve`, `link`, and `repos` |
+| Local daemon | Hono API, SQLite state, git operations, SSE events, and dashboard hosting |
+| Web dashboard | Project, repository, subscription, sync, and harness visibility |
+| Git-backed repos | Skills and commands stay versioned, reviewable, and portable |
+| Multi-tool links | Keep `.claude/` as the source of truth while linking Cursor and CodeBuddy directories |
+| Built-in workflow plugin | `astack-workflow` ships lightweight `harness-init`, `spec`, `plan`, `dev`, and `ship` skills |
+
+## Source Install
+
+Astack is currently intended to be run from source. The npm package is not
+published yet.
+
+Requirements:
+
+- Node.js `>=22.13.0`
+- pnpm `>=10`
+- git
+
+```bash
+git clone https://github.com/zerovoxxx/astack.git
+cd astack
+corepack enable
+pnpm install
+pnpm build
+```
+
+Create a local shell alias for the CLI:
+
+```bash
+alias astack="node $(pwd)/packages/cli/dist/bin.js"
+```
+
+Start the daemon and dashboard:
+
+```bash
+astack server start
+```
+
+The daemon serves the API and dashboard at:
+
+```text
+http://127.0.0.1:7432
+```
+
+Keep that terminal running. In another terminal, reuse the same alias before
+running project commands.
+
+## Example Workflow
+
+Register a repository that contains reusable skills or commands:
+
+```bash
+astack repos register <git-url>
+astack repos list
+```
+
+Register one of your projects:
+
+```bash
+cd /path/to/your-project
+astack init
+```
+
+Subscribe that project to selected assets:
+
+```bash
+astack subscribe <skill-or-command-name>
+astack sync
+astack status
+```
+
+When you improve a subscribed skill locally, inspect and push it back:
+
+```bash
+astack diff <skill-or-command-name>
+astack push <skill-or-command-name>
+```
+
+If a project also uses Cursor or CodeBuddy, link those tool directories to the
+same source:
+
+```bash
+astack link add cursor
+astack link add codebuddy
+astack link list
+```
+
+## Core Concepts
+
+- **Skill repository**: a Git repository that contains reusable AI coding
+  assets. Astack can scan `skills/`, `commands/`, `agents/`, and plugin
+  marketplace layouts.
+- **Project**: a local codebase registered with `astack init`.
+- **Subscription**: a project-level choice to consume a specific skill, command,
+  or agent from a registered repository.
+- **Working copy**: the actual files linked or copied into a project's
+  `.claude/` directory.
+- **Daemon**: the local service that owns git sync, SQLite state, API routes,
+  and dashboard events.
+- **Harness workflow**: the built-in `astack-workflow` plugin that provides a
+  lightweight spec-driven development loop.
 
 ## Architecture
 
-```
-┌─────────────────┐       ┌──────────────────┐       ┌────────────────┐
-│   Web Dashboard │◀────▶│  Backend Daemon   │◀────▶│  Git Repos     │
-│  (React + Vite) │  REST│  (Hono + SQLite)  │  git │  (元技能源)    │
-└─────────────────┘ + SSE└──────────────────┘       └────────────────┘
-                                   ▲
-                                   │ REST
-                         ┌─────────┴─────────┐
-                         │  CLI (astack)     │
-                         │  项目 .claude/    │
-                         └───────────────────┘
+```text
+Web Dashboard  <== REST + SSE ==>  Backend Daemon  <== git ==>  Git Repos
+React + Vite                       Hono + SQLite                 skills/plugins
+                                         ^
+                                         |
+                                        REST
+                                         |
+                                  CLI (astack)
+                                  project .claude/
 ```
 
-## Packages
+Monorepo packages:
 
-- **`@astack/shared`** — zod schemas, 错误码, API 契约（所有 package 的依赖）
-- **`@astack/server`** — Hono 后端 + SQLite + git 操作 + SSE 推送
-- **`@astack/cli`** — `astack` 命令行工具
-- **`@astack/web`** — React + Tailwind dashboard
+- `@astack/shared`: domain contracts, schemas, and error codes
+- `@astack/server`: daemon, SQLite repositories, scanner, git sync, and API
+- `@astack/cli`: command-line interface
+- `@astack/web`: dashboard
 
-## Requirements
+The repository also includes `astack-marketplace/plugins/astack-workflow`, a
+Claude Code and Codex compatible workflow plugin.
 
-- **Node.js ≥ 22.13.0**（v0.2 起用 Node 自带的 `node:sqlite`，v22.13 之前没有此模块）
-- **pnpm ≥ 10.0.0**
+## Documentation
 
-守卫已加在 `astack-server start`：版本不符会立即退出并打印升级指引，不会出现模糊的 `node:sqlite not found` 错误。
-
-## Storage layout & safety
-
-- **`~/.astack/repos/<repo>/` 是只读镜像**。open-source 类型仓库（`kind=open-source`）由 daemon 按 `origin/HEAD` 自动同步维护；**手工修改会在下次 sync / resolve 时被 `git reset --hard` 覆盖**（v0.6 起自愈机制，脏态会发出 `repo.mirror_reset` SSE 事件 + warn 日志）。所有订阅的实际 working copy 在 `<project>/.claude/skills/<skill>/` 的 symlink 目标——要改 skill 请通过订阅路径，或直接在 `kind=custom` 的可写仓库里改。
-- **`~/.astack/daemon.log`**（v0.6 起实装）：daemon 运行日志 tee 到此文件（同时仍输出 stderr），`astack server logs` / `tail -f ~/.astack/daemon.log` 可查看。
+- [Documentation index](./docs/README.md)
+- [English docs](./docs/en/README.md)
+- [Simplified Chinese docs](./docs/zh-CN/README.md)
+- [Architecture design notes](./docs/asset/design.md)
+- [Harness iteration specs](./docs/astack/INDEX.md)
+- [Marketplace plugin README](./astack-marketplace/README.md)
 
 ## Development
 
 ```bash
-pnpm install           # 安装所有依赖
-pnpm build             # 构建所有 package
-pnpm test              # 跑所有测试
-pnpm test:coverage     # 跑测试 + 覆盖率（门槛：lines 90% / branches 85%）
-pnpm typecheck         # 类型检查
-pnpm dev               # 并行启动所有 package 的 watch 模式
+pnpm install
+pnpm build
+pnpm test
+pnpm test:coverage
+pnpm typecheck
+pnpm dev
 ```
 
-## Docs
+Useful local refresh commands:
 
-- [Design Document](./docs/asset/design.md) — 完整设计（Office Hours + Eng Review + Design Review）
-- [CLAUDE.md](./CLAUDE.md) — 项目导航与 AI 工具协作规则
-- [AGENTS.md](./AGENTS.md) — 指向 `CLAUDE.md` 的兼容入口
+```bash
+pnpm dev:refresh
+pnpm dev:reload
+node scripts/dev-up.mjs
+```
+
+## Status
+
+Astack is under active development and is being prepared for open-source use.
+The current recommended path is source install. Public package distribution,
+contribution guidelines, and broader open-source governance can be added as the
+project stabilizes.
 
 ## License
 
-MIT
+MIT, as declared in package metadata.
