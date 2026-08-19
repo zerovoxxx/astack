@@ -18,22 +18,27 @@ description: |
 - 正在进行 merge、rebase 或 cherry-pick。
 - 当前处于 detached HEAD 或无法确认当前分支。
 
-## 代码质量检查
+## 项目质量门
 
-```bash
-ruff format .
-ruff check . --fix
-```
+按以下优先级确定最终验证命令：
 
-**必须解决本次改动引入的新问题**，已有问题可忽略。纯文档/skill 变更跳过此步，改用 `git diff --check`。
+1. 当前变更匹配的 SPEC / PLAN 中已经确认的具体命令。
+2. 项目 `CLAUDE.md` 的“项目质量门”。
+3. 仓库已有 wrapper、package script、构建清单或 CI 入口中能够无歧义确认的命令。
+4. 仍无法确定时停止并报告缺失项，不猜测其他技术生态的默认命令。
+
+最终质量门必须是非修改型命令，例如 check、dry-run、test、build 或 verify。格式化和自动修复属于 `dev` 阶段；`ship` 不运行会主动改写文件的 format / fix 命令。如果不可避免地产生了文件变化，先检查 diff、确认变化属于本次范围，再从最后一次改动后重新运行完整门。
+
+**必须解决本次改动引入的新问题**，已有问题需明确区分。纯文档/skill 变更至少运行 `git diff --check` 和针对性过期引用搜索；项目契约或 SPEC 有更严格要求时同时执行。
 
 ## 验证
 
 在最后一次代码或文档改动后，运行新鲜验证。优先顺序：
 
-- 如存在匹配的 SPEC，使用 SPEC `验证计划` 中的命令。
-- 对受影响模块运行 `uv run pytest tests/{module}/ -v`。
-- 纯文档/skill 变更使用 `git diff --check`。
+- 如存在匹配的 SPEC / PLAN，运行其中覆盖本次变更的命令。
+- 运行项目质量门中适用于受影响模块的静态检查、编译或聚焦测试。
+- 运行 SPEC 或项目质量门要求的完整回归 / 构建验证。
+- 纯文档/skill 变更至少运行 `git diff --check` 和针对性过期引用搜索。
 
 存在匹配 SPEC 时，将命令、退出码、日期和覆盖范围记录到 SPEC `验证记录`。
 

@@ -6,6 +6,7 @@
 
 | 迭代 | 标题 | 状态 | 文档 | 创建日期 |
 |------|------|------|------|---------|
+| v0.16 | Polyglot workflow quality gates | 已完成 | [Iteration15_PolyglotWorkflowQualityGates_SPEC.md](./version/Iteration15_PolyglotWorkflowQualityGates_SPEC.md) | 2026-08-19 |
 | v0.15 | Open-source README：英文首屏与 `docs/` 多语言入口 | 已完成 | [Iteration14_OpenSourceReadme_SPEC.md](./version/Iteration14_OpenSourceReadme_SPEC.md) | 2026-06-20 |
 | v0.14 | Spec skill：复杂方案设计增加外部参照与设计取舍检查 | 已完成 | [Iteration13_SpecDesignReference_SPEC.md](./version/Iteration13_SpecDesignReference_SPEC.md) | 2026-06-20 |
 | v0.13 | Harness docs layout：生成 `CLAUDE.md`、`AGENTS.md` 软链与 `docs/astack/{INDEX.md,version,plan}` | 已完成 | [Iteration12_HarnessDocsLayout_SPEC.md](./version/Iteration12_HarnessDocsLayout_SPEC.md) | 2026-06-19 |
@@ -25,6 +26,9 @@
 
 | 日期 | 版本 | 作者 | 摘要 |
 |------|------|------|------|
+| 2026-08-19 | v0.16 | zerovoxxx | ship：完成多语言项目质量门改造的最终验证与状态收口。 |
+| 2026-08-19 | v0.16 | zerovoxxx | refactor(workflow)：核心 skills 改为语言无关验证流程，项目质量门下沉到 `CLAUDE.md`，并同步 AO Maven 工程。 |
+| 2026-08-19 | v0.16 | zerovoxxx | docs(workflow)：创建多语言核心流程与项目级质量门 SPEC。 |
 | 2026-06-20 | v0.15 | zerovoxxx | ship：完成开源 README 与多语言 docs 入口的最终验证与状态更新。 |
 | 2026-06-20 | v0.15 | zerovoxxx | docs：创建开源 README 改写与多语言 docs 入口 SPEC。 |
 | 2026-06-20 | v0.14 | zerovoxxx | ship：完成 `spec` skill 外部参照规则增强的最终验证与状态更新。 |

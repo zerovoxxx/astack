@@ -62,6 +62,17 @@ Astack 是 AI Coding 技能跨项目管理工具，用 CLI、后端 daemon 和 W
 - 内置插件：`astack-marketplace/plugins/astack-workflow/` 同时遵循 Claude Code `.claude-plugin` 与 Codex `.codex-plugin` marketplace 协议。
 - 项目本地安装：`.claude/skills/{harness-init,spec,plan,dev,ship}` 来自当前仓库最新 `astack-workflow` 插件源；`.agents` 是指向 `.claude` 的兼容软链。
 
+### 3.2 项目质量门
+
+核心工作流按“当前 SPEC / PLAN → 本节 → 仓库原生入口”的顺序解析验证命令，不猜测其他技术生态的默认工具。
+
+- 文档 / skill：`git diff --check`，并用针对性 `rg` 检查过期引用；marketplace 与本地副本使用 `diff -qr astack-marketplace/plugins/astack-workflow/skills .claude/skills`。
+- 静态检查：`pnpm typecheck`。当前 workspace 未配置独立 lint，不把无实际检查的命令作为质量门。
+- 聚焦测试：按影响面选择 `pnpm --filter @astack/shared test`、`pnpm --filter @astack/server test`、`pnpm --filter @astack/cli test` 或 `pnpm --filter @astack/web test`。
+- 完整测试：`pnpm test`。
+- 构建：`pnpm build`。
+- 代码变更的完整验证：`pnpm typecheck && pnpm test && pnpm build`；文档 / skill 变更按匹配 SPEC 的验证计划执行，无需机械运行无关代码回归。
+
 ## 4. 权威文档
 
 - `docs/astack/INDEX.md` — 新 Harness 工作流的版本 / 迭代 / SPEC 索引。
@@ -99,8 +110,8 @@ Astack 是 AI Coding 技能跨项目管理工具，用 CLI、后端 daemon 和 W
 
 ## 6. 当前活跃迭代
 
-**当前 SPEC：** v0.13 — Harness docs layout and CLAUDE template refinement（2026-06-19，[spec](docs/astack/version/Iteration12_HarnessDocsLayout_SPEC.md)）— 将 harness scaffold 收敛为 `CLAUDE.md` 主文件、`AGENTS.md -> CLAUDE.md` 软链和 `docs/astack/{INDEX.md,version,plan}`。
+**当前 SPEC：** 无。
 
-**最近完成：** v0.12 — Plugin Marketplace 布局（2026-05-13，[spec](docs/astack/version/Iteration11_PluginMarketplaceLayout_SPEC.md)）— 扫描 `<root>/<plugin>/{skills,commands,agents}/` 二级容器，并通过 `<plugin>/<inner>` 解决跨 plugin 同名。
+**最近完成：** v0.16 — Polyglot workflow quality gates（2026-08-19，[spec](docs/astack/version/Iteration15_PolyglotWorkflowQualityGates_SPEC.md)）— 核心 skills 保持语言无关，由项目 `CLAUDE.md` 声明真实质量门。
 
 更多迭代见 [`docs/astack/INDEX.md`](docs/astack/INDEX.md)。

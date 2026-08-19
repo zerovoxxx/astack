@@ -53,12 +53,13 @@ PLAN 只使用两个状态：`待执行` 和 `已完成`。新 PLAN 默认为 `�
 
 ## 验证规则
 
-每个任务至少要有一条带预期信号的命令，例如：
+每个任务至少要有一条可执行命令和明确的预期信号，例如退出码、测试数量或零命中。命令按以下优先级确定：
 
-```text
-uv run pytest tests/domains/market/test_service.py -v  → exit 0
-uv run ruff check backend/ → exit 0
-```
+1. 来源 SPEC 已确认的验证命令。
+2. 项目 `CLAUDE.md` 的“项目质量门”。
+3. 仓库已有 wrapper、package script、构建清单或 CI 入口中能够无歧义确认的命令。
+
+最终 PLAN 不得保留 `<module>`、`{test}` 一类不可直接执行的占位符，也不得猜测其他技术生态的默认命令。无法解析时标注 `Spec 待明确`，先补齐 SPEC 或项目质量门。`git diff --check → exit 0`、针对性搜索过期标记并预期零命中，都是文档任务可用的机械信号。
 
 避免模糊检查（如"构建通过"），除非明确给出命令名称。不引入 SPEC 中没有的设计决策；不明确的需求标注为 `Spec 待明确`。
 
