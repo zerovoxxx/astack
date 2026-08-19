@@ -1,6 +1,6 @@
 # astack-marketplace
 
-> Claude Code and Codex plugin marketplace for the Astack lightweight Spec workflow.
+> Claude Code and Codex plugin marketplace for the Astack lightweight Spec workflow and shared engineering skills.
 
 ## 1. Repository Role
 
@@ -11,7 +11,10 @@ This directory is a dual Claude Code / Codex marketplace root. It follows both m
 - `plugins/<plugin>/` contains installable plugins.
 - Each plugin owns its own `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and component directories.
 
-The default shipped plugin is `astack-workflow`.
+The marketplace ships two plugins:
+
+- `astack-workflow` owns the lightweight Spec workflow.
+- `astack-common` owns reusable engineering skills that are not workflow phases.
 
 ## 2. Protocol Layout
 
@@ -23,19 +26,29 @@ The default shipped plugin is `astack-workflow`.
 ├── .claude-plugin/
 │   └── marketplace.json
 ├── plugins/
-│   └── astack-workflow/
+│   ├── astack-workflow/
+│   │   ├── .codex-plugin/
+│   │   │   └── plugin.json
+│   │   ├── .claude-plugin/
+│   │   │   └── plugin.json
+│   │   ├── skills/
+│   │   │   ├── harness-init/
+│   │   │   ├── spec/
+│   │   │   ├── plan/
+│   │   │   ├── dev/
+│   │   │   └── ship/
+│   │   └── scripts/
+│   │       └── spec-lint.sh
+│   └── astack-common/
 │       ├── .codex-plugin/
 │       │   └── plugin.json
 │       ├── .claude-plugin/
 │       │   └── plugin.json
-│       ├── skills/
-│       │   ├── harness-init/
-│       │   ├── spec/
-│       │   ├── plan/
-│       │   ├── dev/
-│       │   └── ship/
-│       └── scripts/
-│           └── spec-lint.sh
+│       └── skills/
+│           ├── branch-manager/
+│           ├── bug-review/
+│           ├── dep-upgrade/
+│           └── db-design/
 ├── CHANGELOG.md
 └── README.md
 ```
@@ -76,6 +89,8 @@ python -m json.tool astack-marketplace/.claude-plugin/marketplace.json >/dev/nul
 python -m json.tool astack-marketplace/.agents/plugins/marketplace.json >/dev/null
 python -m json.tool astack-marketplace/plugins/astack-workflow/.claude-plugin/plugin.json >/dev/null
 python -m json.tool astack-marketplace/plugins/astack-workflow/.codex-plugin/plugin.json >/dev/null
+python -m json.tool astack-marketplace/plugins/astack-common/.claude-plugin/plugin.json >/dev/null
+python -m json.tool astack-marketplace/plugins/astack-common/.codex-plugin/plugin.json >/dev/null
 bash -n astack-marketplace/plugins/astack-workflow/skills/harness-init/scripts/init-harness.sh
 bash astack-marketplace/plugins/astack-workflow/skills/harness-init/scripts/init-harness.sh --dry-run
 git diff --check
@@ -85,10 +100,12 @@ If Codex `plugin-creator` is available, also run:
 
 ```bash
 python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py astack-marketplace/plugins/astack-workflow
+python3 ~/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py astack-marketplace/plugins/astack-common
 ```
 
 If Claude Code is available, also run:
 
 ```bash
 claude plugin validate astack-marketplace/plugins/astack-workflow
+claude plugin validate astack-marketplace/plugins/astack-common
 ```

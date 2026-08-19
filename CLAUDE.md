@@ -6,7 +6,7 @@
 
 Astack 是 AI Coding 技能跨项目管理工具，用 CLI、后端 daemon 和 Web Dashboard 管理 Claude Code / Cursor / CodeBuddy 项目的 skills、commands、插件 marketplace 与订阅同步。
 
-当前仓库同时维护运行时 packages 和内置 `astack-marketplace/plugins/astack-workflow` 插件；后者提供 `harness-init`、`spec`、`plan`、`dev`、`ship` 四流程。
+当前仓库同时维护运行时 packages 和内置 marketplace 插件：`astack-workflow` 提供 `harness-init`、`spec`、`plan`、`dev`、`ship` 流程，`astack-common` 承载非流程类通用 skills。
 
 ## 2. 核心开发原则
 
@@ -59,7 +59,7 @@ Astack 是 AI Coding 技能跨项目管理工具，用 CLI、后端 daemon 和 W
 - Monorepo package：`@astack/shared`、`@astack/server`、`@astack/cli`、`@astack/web`。
 - 后端：Hono + SQLite + git 操作 + SSE；Node.js 必须满足 `>=22.13.0`。
 - 前端：React + Vite + Tailwind；Harness 面板状态以 `@astack/shared` 的 domain contract 为准。
-- 内置插件：`astack-marketplace/plugins/astack-workflow/` 同时遵循 Claude Code `.claude-plugin` 与 Codex `.codex-plugin` marketplace 协议。
+- 内置插件：`astack-marketplace/plugins/{astack-workflow,astack-common}/` 同时遵循 Claude Code `.claude-plugin` 与 Codex `.codex-plugin` marketplace 协议。
 - 项目本地安装：`.claude/skills/{harness-init,spec,plan,dev,ship}` 来自当前仓库最新 `astack-workflow` 插件源；`.agents` 是指向 `.claude` 的兼容软链。
 
 ### 3.2 项目质量门

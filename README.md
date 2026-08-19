@@ -48,7 +48,7 @@ Astack turns those assets into managed subscriptions:
 | Web dashboard | Project, repository, subscription, sync, and harness visibility |
 | Git-backed repos | Skills and commands stay versioned, reviewable, and portable |
 | Multi-tool links | Keep `.claude/` as the source of truth while linking Cursor and CodeBuddy directories |
-| Built-in workflow plugin | `astack-workflow` ships lightweight `harness-init`, `spec`, `plan`, `dev`, and `ship` skills |
+| Built-in plugins | `astack-workflow` ships the lightweight development loop; `astack-common` ships shared engineering skills such as `db-design` |
 
 ## Source Install
 
@@ -165,8 +165,8 @@ Monorepo packages:
 - `@astack/cli`: command-line interface
 - `@astack/web`: dashboard
 
-The repository also includes `astack-marketplace/plugins/astack-workflow`, a
-Claude Code and Codex compatible workflow plugin.
+The repository also includes `astack-marketplace/plugins/{astack-workflow,astack-common}`,
+providing Claude Code and Codex compatible workflow and shared engineering skills.
 
 ## Documentation
 

@@ -9,7 +9,7 @@ Astack 用来跨项目管理 AI coding 的 skills、commands、agents 和 workfl
 - [根 README](../../README.md)：英文项目概览、源码安装和第一条使用链路。
 - [架构设计说明](../asset/design.md)：更完整的产品与系统设计背景。
 - [Harness 迭代索引](../astack/INDEX.md)：当前 SPEC、实现历史和验证记录。
-- [内置 marketplace 插件](../../astack-marketplace/README.md)：`astack-workflow` 插件的安装说明。
+- [内置 marketplace 插件](../../astack-marketplace/README.md)：`astack-workflow` 与 `astack-common` 的安装说明。
 
 ## Astack 管什么
 

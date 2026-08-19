@@ -1,0 +1,36 @@
+{
+  "name": "astack-common",
+  "version": "0.1.0",
+  "description": "Shared Astack skills for branch management, bug review, dependency upgrades, and database design.",
+  "author": {
+    "name": "zerovoxxx"
+  },
+  "homepage": "https://github.com/zerovoxxx/astack",
+  "repository": "https://github.com/zerovoxxx/astack",
+  "license": "MIT",
+  "keywords": [
+    "branch-management",
+    "bug-review",
+    "dependency-upgrade",
+    "database-design",
+    "codex"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Astack Common",
+    "shortDescription": "Shared branch, review, dependency, and database skills.",
+    "longDescription": "Shared Astack skills for Git Flow branch creation, systematic bug review, safe Python dependency upgrades, and FinClaw-compatible MySQL database design.",
+    "developerName": "zerovoxxx",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use Astack Common to review this codebase for bugs.",
+      "Use Astack Common to upgrade this project's dependencies safely.",
+      "Use Astack Common to design a compliant MySQL table and DDL."
+    ],
+    "brandColor": "#10A37F"
+  }
+}
