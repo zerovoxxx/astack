@@ -9,7 +9,7 @@
 > | 创建日期 | 2026-08-19 |
 > | 最后更新 | 2026-08-19 |
 > | 作者 | zerovoxxx |
-> | 关联文档 | [Iteration12_HarnessDocsLayout_SPEC.md](./Iteration12_HarnessDocsLayout_SPEC.md) |
+> | 关联文档 | [Iteration12_HarnessDocsLayout_SPEC.md](./archive/Iteration12_HarnessDocsLayout_SPEC.md) |
 > | 一句话目标 | 将 `spec`、`plan`、`dev`、`ship` 改为语言无关流程，由各项目在 `CLAUDE.md` 声明真实质量门，并把新约定同步到 Java/Maven 的 AO 项目。 |
 
 ## 1. 背景

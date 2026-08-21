@@ -1,7 +1,7 @@
 #!/bin/bash
 # spec-lint.sh — lightweight SPEC document checks
 #
-# Usage:
+# Usage (run from the repository root):
 #   spec-lint.sh [file-or-directory]
 #   Defaults to docs/astack/version/ and checks root-level Iteration*_SPEC.md files.
 #
@@ -39,13 +39,45 @@ has_pattern() {
     grep -Eq "$pattern" "$file" 2>/dev/null
 }
 
+has_document_info_field() {
+    local field="$1"
+    local file="$2"
+    grep -Eq "^[>[:space:]]*\\|[[:space:]]*$field[[:space:]]*\\|" "$file" 2>/dev/null
+}
+
+extract_document_status() {
+    local file="$1"
+    local line
+    line=$(grep -m 1 '文档状态' "$file" || true)
+
+    if [[ "$line" == *"|"* ]]; then
+        echo "$line" | awk -F'|' '{
+            for (i = 1; i <= NF; i++) {
+                gsub(/^[ \t>]+|[ \t]+$/, "", $i)
+                if ($i == "文档状态" && i < NF) {
+                    value = $(i + 1)
+                    gsub(/^[ \t]+|[ \t]+$/, "", value)
+                    print value
+                    exit
+                }
+            }
+        }'
+        return
+    fi
+
+    echo "$line" | sed 's/.*文档状态[：: ]*//;s/\*\*//g;s/^[[:space:]]*//;s/[[:space:]]*$//'
+}
+
 TARGET="${1:-docs/astack/version}"
 INDEX_PATH="docs/astack/INDEX.md"
 
 if [ -f "$TARGET" ]; then
     FILES=("$TARGET")
 elif [ -d "$TARGET" ]; then
-    mapfile -t FILES < <(find "$TARGET" -maxdepth 1 -name "Iteration*_SPEC.md" 2>/dev/null | sort -V)
+    FILES=()
+    while IFS= read -r FILE; do
+        [ -n "$FILE" ] && FILES+=("$FILE")
+    done < <(find "$TARGET" -maxdepth 1 -name "Iteration*_SPEC.md" 2>/dev/null | LC_ALL=C sort)
 else
     echo "Usage: spec-lint.sh [file-or-directory]"
     exit 1
@@ -73,17 +105,27 @@ for FILE in "${FILES[@]}"; do
 
     if ! has_pattern '文档状态' "$FILE"; then
         error "$FILENAME: missing document status" \
-              "Add a line near the title, for example: > **文档状态: 设计中**"
+              "Add a 文档信息 table row, for example: > | 文档状态 | 待实施 |"
     else
-        STATUS=$(grep '文档状态' "$FILE" | head -1 | sed 's/.*文档状态[：: ]*//;s/\*\*//g;s/^[[:space:]]*//;s/[[:space:]]*$//')
+        STATUS=$(extract_document_status "$FILE")
         case "$STATUS" in
-            *设计中*|*待实施*|*开发中*|*验证中*|*开发完成*|*已完成*|*阻塞*|*完成*)
+            待实施|开发中|已完成|阻塞)
                 ok "document status: $STATUS"
                 ;;
             *)
-                warn "$FILENAME: uncommon document status '$STATUS'"
+                warn "$FILENAME: non-standard document status '$STATUS' (expected one of: 待实施, 开发中, 已完成, 阻塞)"
                 ;;
         esac
+    fi
+
+    for FIELD in 文档类型 文档状态 创建日期 最后更新 作者 关联文档 一句话目标; do
+        if ! has_document_info_field "$FIELD" "$FILE"; then
+            warn "$FILENAME: missing 文档信息 field '$FIELD'"
+        fi
+    done
+
+    if has_document_info_field "文档类型" "$FILE" && ! grep -Eq '^[>[:space:]]*\|[[:space:]]*文档类型[[:space:]]*\|[[:space:]]*SPEC[[:space:]]*\|' "$FILE"; then
+        warn "$FILENAME: 文档类型 should be SPEC"
     fi
 
     if has_pattern '目标|背景|缘起|In scope|本次迭代的边界' "$FILE"; then
@@ -101,7 +143,7 @@ for FILE in "${FILES[@]}"; do
 
     if has_pattern '验收标准|Acceptance' "$FILE"; then
         ok "acceptance criteria"
-        if ! grep -Eq '^\s*([0-9]+\.|-|\*)\s+' "$FILE"; then
+        if ! grep -Eq '^[[:space:]]*([0-9]+\.|-|\*)[[:space:]]+' "$FILE"; then
             warn "$FILENAME: acceptance criteria section has no list items"
         fi
     else
@@ -129,21 +171,21 @@ for FILE in "${FILES[@]}"; do
     echo ""
 done
 
-if [ -d "$TARGET" ]; then
-    echo "--- Cross-file checks ---"
-    if [ -f "$INDEX_PATH" ]; then
-        for FILE in "${FILES[@]}"; do
-            FILENAME=$(basename "$FILE")
-            ITER_NUM=$(echo "$FILENAME" | grep -oE '^Iteration[0-9]+' | sed 's/Iteration//')
-            if [ -n "$ITER_NUM" ] && ! grep -q "Iteration$ITER_NUM" "$INDEX_PATH" 2>/dev/null; then
+echo "--- Cross-file checks ---"
+if [ -f "$INDEX_PATH" ]; then
+    for FILE in "${FILES[@]}"; do
+        FILENAME=$(basename "$FILE")
+        if [[ "$FILENAME" =~ ^Iteration([0-9]+)_ ]]; then
+            ITER_NUM="${BASH_REMATCH[1]}"
+            if ! grep -Fq "$FILENAME" "$INDEX_PATH" 2>/dev/null; then
                 warn "Iteration$ITER_NUM exists as a SPEC file but is not referenced in $INDEX_PATH"
             fi
-        done
-    else
-        warn "$INDEX_PATH not found"
-    fi
-    echo ""
+        fi
+    done
+else
+    warn "$INDEX_PATH not found"
 fi
+echo ""
 
 echo "=== Result ==="
 echo -e "files: ${#FILES[@]}"

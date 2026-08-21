@@ -6,10 +6,13 @@
 
 ### Added
 
+- **`ship` SPEC 归档器**：新增 skill 自带的确定性归档脚本，按阈值回收已完成 SPEC、保留最新三项并同步主/归档 INDEX；支持 dry-run、强制执行、两种 INDEX 链接形态、碰撞预检和失败回滚。
 - **`astack-common` plugin**：新增 Claude Code / Codex 双协议通用技能插件，恢复 `branch-manager`、`bug-review`、`dep-upgrade`，并从 FinClaw Platform AO 同步 `db-design`；不恢复 iWiki 与 `devops-pipeline`。
 
 ### Changed
 
+- **`spec` 校验器自包含**：将 `spec-lint.sh` 从插件根目录下沉到 `skills/spec/scripts/`，仅由 `spec` 在创建或更新 SPEC 后调用，并兼容 macOS 默认 Bash 3.2。
+- **`ship` 合并冲突分级**：补充三方 stage 判读、rebase ours/theirs 语义、生成物重建、编号资源顺延、语义冲突裁决、冲突后双层验证和安全中止规则。
 - **Marketplace protocol migration**：目录从 `astack-skills/` 迁移为 `astack-marketplace/`，新增 `.claude-plugin/marketplace.json` 与 `plugins/astack-workflow/.claude-plugin/plugin.json`，按 Claude Code plugin marketplace 协议发布。
 - **Codex plugin protocol support**：新增 `.agents/plugins/marketplace.json` 与 `plugins/astack-workflow/.codex-plugin/plugin.json`，同一个 `astack-workflow` plugin 同时支持 Claude Code 与 Codex marketplace。
 - **插件职责拆分**：`astack-workflow` 只保留轻量 Spec 工作流，非流程类通用技能统一放入 `astack-common`。
@@ -36,7 +39,7 @@
 
 - 保留 `plugins/astack-workflow/skills/` 作为当前元数据载体；Slash Command 不再作为本仓库默认交付形态。
 - 保留 `CLAUDE.md` 作为仓库治理说明，保留 `AGENTS.md` 作为兼容入口，保留 `README.md` 作为使用入口。
-- 保留 `plugins/astack-workflow/scripts/spec-lint.sh` 作为 Spec 机械化校验器。
+- 保留 `plugins/astack-workflow/skills/spec/scripts/spec-lint.sh` 作为 `spec` skill 自带的机械化校验器。
 
 ---
 

@@ -34,11 +34,11 @@ The marketplace ships two plugins:
 │   │   ├── skills/
 │   │   │   ├── harness-init/
 │   │   │   ├── spec/
+│   │   │   │   └── scripts/
+│   │   │   │       └── spec-lint.sh
 │   │   │   ├── plan/
 │   │   │   ├── dev/
 │   │   │   └── ship/
-│   │   └── scripts/
-│   │       └── spec-lint.sh
 │   └── astack-common/
 │       ├── .codex-plugin/
 │       │   └── plugin.json
@@ -77,7 +77,7 @@ Do not reintroduce default slash-command files. Claude Code and the Astack scann
 1. Every plugin must have `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`.
 2. Every marketplace entry in `.claude-plugin/marketplace.json` and `.agents/plugins/marketplace.json` must point at an existing plugin source.
 3. Plugin skills must not reference files outside their plugin directory; marketplace installs are copied into host-specific plugin caches.
-4. Keep `scripts/` inside the plugin that uses those scripts.
+4. Keep skill-specific `scripts/` inside the skill that owns them; use plugin-root scripts only for true cross-skill utilities.
 5. Record asset additions, removals, and protocol changes in `CHANGELOG.md`.
 
 ## 5. Verification
@@ -93,6 +93,7 @@ python -m json.tool astack-marketplace/plugins/astack-common/.claude-plugin/plug
 python -m json.tool astack-marketplace/plugins/astack-common/.codex-plugin/plugin.json >/dev/null
 bash -n astack-marketplace/plugins/astack-workflow/skills/harness-init/scripts/init-harness.sh
 bash astack-marketplace/plugins/astack-workflow/skills/harness-init/scripts/init-harness.sh --dry-run
+bash -n astack-marketplace/plugins/astack-workflow/skills/spec/scripts/spec-lint.sh
 git diff --check
 ```
 

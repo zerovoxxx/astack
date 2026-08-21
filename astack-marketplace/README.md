@@ -46,8 +46,8 @@ astack-marketplace/
     ├── astack-workflow/
     │   ├── .codex-plugin/plugin.json
     │   ├── .claude-plugin/plugin.json
-    │   ├── skills/
-    │   └── scripts/
+    │   └── skills/
+    │       └── spec/scripts/spec-lint.sh
     └── astack-common/
         ├── .codex-plugin/plugin.json
         ├── .claude-plugin/plugin.json

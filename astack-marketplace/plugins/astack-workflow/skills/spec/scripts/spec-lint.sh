@@ -1,7 +1,7 @@
 #!/bin/bash
 # spec-lint.sh — lightweight SPEC document checks
 #
-# Usage:
+# Usage (run from the repository root):
 #   spec-lint.sh [file-or-directory]
 #   Defaults to docs/astack/version/ and checks root-level Iteration*_SPEC.md files.
 #
@@ -48,7 +48,7 @@ has_document_info_field() {
 extract_document_status() {
     local file="$1"
     local line
-    line=$(grep '文档状态' "$file" | head -1 || true)
+    line=$(grep -m 1 '文档状态' "$file" || true)
 
     if [[ "$line" == *"|"* ]]; then
         echo "$line" | awk -F'|' '{
@@ -74,7 +74,10 @@ INDEX_PATH="docs/astack/INDEX.md"
 if [ -f "$TARGET" ]; then
     FILES=("$TARGET")
 elif [ -d "$TARGET" ]; then
-    mapfile -t FILES < <(find "$TARGET" -maxdepth 1 -name "Iteration*_SPEC.md" 2>/dev/null | sort -V)
+    FILES=()
+    while IFS= read -r FILE; do
+        [ -n "$FILE" ] && FILES+=("$FILE")
+    done < <(find "$TARGET" -maxdepth 1 -name "Iteration*_SPEC.md" 2>/dev/null | LC_ALL=C sort)
 else
     echo "Usage: spec-lint.sh [file-or-directory]"
     exit 1
@@ -140,7 +143,7 @@ for FILE in "${FILES[@]}"; do
 
     if has_pattern '验收标准|Acceptance' "$FILE"; then
         ok "acceptance criteria"
-        if ! grep -Eq '^\s*([0-9]+\.|-|\*)\s+' "$FILE"; then
+        if ! grep -Eq '^[[:space:]]*([0-9]+\.|-|\*)[[:space:]]+' "$FILE"; then
             warn "$FILENAME: acceptance criteria section has no list items"
         fi
     else
@@ -168,21 +171,21 @@ for FILE in "${FILES[@]}"; do
     echo ""
 done
 
-if [ -d "$TARGET" ]; then
-    echo "--- Cross-file checks ---"
-    if [ -f "$INDEX_PATH" ]; then
-        for FILE in "${FILES[@]}"; do
-            FILENAME=$(basename "$FILE")
-            ITER_NUM=$(echo "$FILENAME" | grep -oE '^Iteration[0-9]+' | sed 's/Iteration//')
-            if [ -n "$ITER_NUM" ] && ! grep -q "Iteration$ITER_NUM" "$INDEX_PATH" 2>/dev/null; then
+echo "--- Cross-file checks ---"
+if [ -f "$INDEX_PATH" ]; then
+    for FILE in "${FILES[@]}"; do
+        FILENAME=$(basename "$FILE")
+        if [[ "$FILENAME" =~ ^Iteration([0-9]+)_ ]]; then
+            ITER_NUM="${BASH_REMATCH[1]}"
+            if ! grep -Fq "$FILENAME" "$INDEX_PATH" 2>/dev/null; then
                 warn "Iteration$ITER_NUM exists as a SPEC file but is not referenced in $INDEX_PATH"
             fi
-        done
-    else
-        warn "$INDEX_PATH not found"
-    fi
-    echo ""
+        fi
+    done
+else
+    warn "$INDEX_PATH not found"
 fi
+echo ""
 
 echo "=== Result ==="
 echo -e "files: ${#FILES[@]}"

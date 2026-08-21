@@ -4,12 +4,13 @@
 >
 > **列说明**：左列 `迭代` 为业务版本号 `v<major>.<minor>`，`文档` 列链接的文件名前缀 `Iteration<N>` 为该迭代的物理序号（从 1 开始递增）。本表即版本号 ↔ 物理序号的权威映射。命名规范见 [`CLAUDE.md §5.2`](../../CLAUDE.md#52-命名规范)。
 
+> 已归档迭代见 [version/archive/INDEX.md](version/archive/INDEX.md)。
+
 | 迭代 | 标题 | 状态 | 文档 | 创建日期 |
 |------|------|------|------|---------|
 | v0.16 | Polyglot workflow quality gates | 已完成 | [Iteration15_PolyglotWorkflowQualityGates_SPEC.md](./version/Iteration15_PolyglotWorkflowQualityGates_SPEC.md) | 2026-08-19 |
 | v0.15 | Open-source README：英文首屏与 `docs/` 多语言入口 | 已完成 | [Iteration14_OpenSourceReadme_SPEC.md](./version/Iteration14_OpenSourceReadme_SPEC.md) | 2026-06-20 |
 | v0.14 | Spec skill：复杂方案设计增加外部参照与设计取舍检查 | 已完成 | [Iteration13_SpecDesignReference_SPEC.md](./version/Iteration13_SpecDesignReference_SPEC.md) | 2026-06-20 |
-| v0.13 | Harness docs layout：生成 `CLAUDE.md`、`AGENTS.md` 软链与 `docs/astack/{INDEX.md,version,plan}` | 已完成 | [Iteration12_HarnessDocsLayout_SPEC.md](./version/Iteration12_HarnessDocsLayout_SPEC.md) | 2026-06-19 |
 | v0.12 | Plugin Marketplace 布局：扫描 `<root>/<plugin>/{skills,commands,agents}/` 二级容器 | IMPLEMENTED（PR1–PR3 已落地） | [Iteration11_PluginMarketplaceLayout_SPEC.md](./version/Iteration11_PluginMarketplaceLayout_SPEC.md) | 2026-05-13 |
 | v0.11 | Auto-sync：Daemon 侧周期性 pull / push + 冲突安全停泊 | SHIPPED | [Iteration10_AutoSync_SPEC.md](./version/Iteration10_AutoSync_SPEC.md) | 2026-05-11 |
 | v0.10 | Force Refresh：脏 open-source 镜像的显式 reset + pull 入口 | IMPLEMENTED（单次合并，待 E2E 补测） | [Iteration9_ForceRefresh_SPEC.md](./version/Iteration9_ForceRefresh_SPEC.md) | 2026-05-10 |
