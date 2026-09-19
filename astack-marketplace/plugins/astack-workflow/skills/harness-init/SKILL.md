@@ -1,14 +1,14 @@
 ---
 name: harness-init
 description: |
-  初始化或迁移项目的轻量 Spec 工作流基础设施（CLAUDE.md 主入口 + AGENTS.md 软链 + docs/astack/INDEX.md 版本索引）。
+  初始化或迁移项目的 Spec 工作流基础设施（CLAUDE.md 主入口 + AGENTS.md 软链 + docs/astack/INDEX.md 版本索引）。
   当用户说"初始化 harness / 搭建 spec 工作流 / 接入研发流程规范 / 给这个项目加上 CLAUDE.md 或 AGENTS.md / setup harness / init harness"时触发。
   支持三种模式：全新项目从零初始化（fresh）、已有 CLAUDE.md 或 AGENTS.md 的语义迁移（migrate）、已初始化但缺文件的补齐（patch）。
 ---
 
-# Harness 轻量 Spec 初始化
+# Harness Spec 初始化
 
-为项目搭建最小可用的 Spec 工作流。默认只维护一个治理主入口、一个兼容软链和一个文档命名空间：
+为项目搭建 Spec 工作流基础设施。默认只维护一个治理主入口、一个兼容软链和一个文档命名空间：
 
 - `CLAUDE.md`：项目导航和少量硬规则的主文件
 - `AGENTS.md`：指向 `CLAUDE.md` 的兼容软链
@@ -43,7 +43,7 @@ bash "${PLUGIN_ROOT}/skills/harness-init/scripts/init-harness.sh"
 | 有 `CLAUDE.md` 或 `AGENTS.md`，但无完整 scaffold | `migrate` | 保留既有入口内容，机械迁移为 `CLAUDE.md` 主文件 + `AGENTS.md -> CLAUDE.md` 软链，创建 `INDEX.md`，等待 AI 接手语义迁移 |
 | 已有 `CLAUDE.md`、`AGENTS.md -> CLAUDE.md` 和 `docs/astack/INDEX.md` | `patch` | 只补齐缺失目录，不覆盖已存在内容 |
 
-脚本最后会运行轻量验证门：
+脚本最后会运行验证门：
 
 - 检查 `CLAUDE.md` 存在且不是软链。
 - 检查 `AGENTS.md` 是指向 `CLAUDE.md` 的软链。
@@ -115,7 +115,7 @@ bash astack-marketplace/plugins/astack-workflow/skills/harness-init/scripts/init
 4. `docs/astack/version/` 和 `docs/astack/plan/` 存在。
 5. 旧 `CLAUDE.md` / `AGENTS.md` 中仍有效的规则和迭代状态未丢失。
 6. 不存在默认生成的 `BOUNDARIES.md`、`docs/retro/golden-rules.md`、`docs/retro/patterns.md`。
-7. 脚本输出 `轻量 Spec scaffold 验证通过`，或明确列出缺失文件。
+7. 脚本输出 `Spec scaffold 验证通过`，或明确列出缺失文件。
 
 ## 目标结构
 
@@ -146,5 +146,5 @@ bash astack-marketplace/plugins/astack-workflow/skills/harness-init/scripts/init
 ## 参考文件
 
 - `skills/harness-init/scripts/init-harness.sh`：机械化脚手架脚本
-- `skills/harness-init/templates/CLAUDE.md.tpl`：轻量导航模板
+- `skills/harness-init/templates/CLAUDE.md.tpl`：导航模板
 - `skills/harness-init/templates/INDEX.md.tpl`：迭代索引模板

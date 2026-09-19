@@ -32,7 +32,7 @@ export const SYSTEM_SKILLS: readonly SystemSkillDescriptor[] = [
     id: "harness-init",
     name: "Harness Spec bootstrap",
     description:
-      "初始化或迁移项目的轻量 Spec 工作流基础设施（CLAUDE.md + AGENTS.md 软链 + docs/astack/INDEX.md），为 astack-workflow 的 spec/plan/dev/ship 四流程打底。"
+      "初始化或迁移项目的 Spec 工作流基础设施（CLAUDE.md + AGENTS.md 软链 + docs/astack/INDEX.md），为 astack-workflow 的 spec/plan/dev/ship 四流程打底。"
   }
 ];
 

@@ -19,7 +19,7 @@ import {
  * Harness tab — v0.4, extended in v0.7.
  *
  * Displays the installation status of the system-level `harness-init` skill
- * inside this project plus the project-level lightweight Spec scaffold
+ * inside this project plus the project-level Spec scaffold
  * (CLAUDE.md + AGENTS.md symlink + docs/astack/INDEX.md) required by the
  * spec/plan/dev/ship skill flow.
  *
@@ -348,7 +348,7 @@ function InstructionsBlock({
   const lead =
     status === HarnessStatus.ScaffoldIncomplete
       ? "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and ask it to use the following skill prompt to finish Harness initialization (CLAUDE.md + AGENTS.md symlink + docs/astack/INDEX.md):"
-      : "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and ask it to use the following skill prompt to initialize the lightweight Spec scaffold (CLAUDE.md + AGENTS.md symlink + docs/astack/INDEX.md):";
+      : "Open this project in your AI coding tool (Claude Code, CodeBuddy IDE, etc.) and ask it to use the following skill prompt to initialize the Spec scaffold (CLAUDE.md + AGENTS.md symlink + docs/astack/INDEX.md):";
 
   return (
     <div className="mt-2 rounded border border-line-subtle bg-surface-1 px-3 py-3 space-y-2">

@@ -48,7 +48,7 @@ Astack turns those assets into managed subscriptions:
 | Web dashboard | Project, repository, subscription, sync, and harness visibility |
 | Git-backed repos | Skills and commands stay versioned, reviewable, and portable |
 | Multi-tool links | Keep `.claude/` as the source of truth while linking Cursor and CodeBuddy directories |
-| Built-in plugins | `astack-workflow` ships the lightweight development loop; `astack-common` ships shared engineering skills such as `db-design` |
+| Built-in plugins | `astack-workflow` ships the spec-driven development loop; `astack-common` ships shared engineering skills such as `db-design` |
 
 ## Source Install
 
@@ -143,7 +143,7 @@ astack link list
 - **Daemon**: the local service that owns git sync, SQLite state, API routes,
   and dashboard events.
 - **Harness workflow**: the built-in `astack-workflow` plugin that provides a
-  lightweight spec-driven development loop.
+  spec-driven development loop.
 
 ## Architecture
 

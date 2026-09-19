@@ -1,6 +1,6 @@
 # Astack Marketplace
 
-Claude Code and Codex plugin marketplace for lightweight Spec workflows and shared engineering skills.
+Claude Code and Codex plugin marketplace for Spec-driven workflows and shared engineering skills.
 
 ## Install In Claude Code
 

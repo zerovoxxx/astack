@@ -1,6 +1,6 @@
 # astack
 
-> 本文件是项目的轻量导航入口。详细方案以 `docs/astack/version/*_SPEC.md` 为准。
+> 本文件是项目的导航入口。详细方案以 `docs/astack/version/*_SPEC.md` 为准。
 
 ## 1. 项目定位
 
@@ -50,7 +50,7 @@ Astack 是 AI Coding 技能跨项目管理工具，用 CLI、后端 daemon 和 W
 3. 最小改动：只修改当前 SPEC 涉及的文件和模块。
 4. 机械校验优先：能用 lint / test / script 检查的规则，不靠人工记忆。
 5. 证据先于完成：声明完成前必须运行本次变更对应的验证命令，并在 SPEC 或汇报中记录命令与结果。
-6. 轻量维护：默认不维护 sidecar 文档，除非用户明确要求专项报告。
+6. 文档维护：默认不维护 sidecar 文档，除非用户明确要求专项报告。
 
 ## 3. 扩展原则
 
@@ -88,12 +88,12 @@ Astack 是 AI Coding 技能跨项目管理工具，用 CLI、后端 daemon 和 W
 想清楚要做什么              拆开复杂任务               开始执行                  验证、提交、推送
 ```
 
-- `/astack-workflow:spec`：创建或更新 SPEC，并维护 `docs/astack/INDEX.md`。每个 SPEC 必须包含轻量验证计划。
+- `/astack-workflow:spec`：创建或更新 SPEC，并维护 `docs/astack/INDEX.md`。每个 SPEC 必须包含验证计划。
 - `/astack-workflow:plan`：仅在复杂任务时，把 SPEC 拆成可执行步骤和验证点，输出到 `docs/astack/plan/`。
 - `/astack-workflow:dev`：按 SPEC 或 PLAN 实施代码变更，运行验证命令并把证据写回 SPEC。
 - `/astack-workflow:ship`：做最终新鲜验证、状态流转、提交并推送。
 
-## 5.1 轻量验证门
+## 5.1 验证门
 
 1. SPEC 阶段写清楚至少 1 条机械验证命令；纯文档变更可写 `git diff --check`。
 2. DEV 阶段每完成一个可独立交付的任务，运行对应验证命令；失败则停止并记录失败原因。

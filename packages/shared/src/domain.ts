@@ -524,8 +524,8 @@ export interface ProjectStatus {
  * cloned from a user repo). See v0.4 spec §A1 for why this is a
  * separate domain concept from `Skill`.
  *
- * v0.4 ships exactly one: `harness-init`, which seeds the lightweight
- * Harness Spec workflow scaffold (CLAUDE.md + AGENTS.md symlink +
+ * v0.4 ships exactly one: `harness-init`, which seeds the Harness Spec
+ * workflow scaffold (CLAUDE.md + AGENTS.md symlink +
  * docs/astack/INDEX.md) into projects on register.
  *
  * `content_hash` is computed at daemon startup by iterating the

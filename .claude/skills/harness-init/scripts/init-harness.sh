@@ -1,7 +1,7 @@
 #!/bin/bash
 # init-harness.sh — Harness 研发流程初始化
 #
-# 在项目根目录运行，自动检测项目状态并初始化轻量 Spec 工作流：
+# 在项目根目录运行，自动检测项目状态并初始化 Spec 工作流：
 #   - fresh：   全新项目，从 templates/ 渲染 CLAUDE.md + INDEX.md，并创建 AGENTS.md 软链
 #   - migrate： 已有 AGENTS.md/CLAUDE.md 但无 INDEX.md，迁移为 CLAUDE.md 主文件 + AGENTS.md 软链
 #   - patch：   已初始化，补齐缺失的 CLAUDE.md / AGENTS.md / INDEX.md 入口
@@ -155,9 +155,9 @@ ensure_agents_md_symlink() {
     success "创建软链 AGENTS.md → CLAUDE.md"
 }
 
-# 验证轻量 Spec scaffold 是否可用。
-validate_lightweight_scaffold() {
-    action "验证轻量 Spec scaffold"
+# 验证Spec scaffold 是否可用。
+validate_spec_scaffold() {
+    action "验证Spec scaffold"
 
     local required_files=("CLAUDE.md" "AGENTS.md" "$HARNESS_INDEX_PATH")
     local missing=()
@@ -186,12 +186,12 @@ validate_lightweight_scaffold() {
     fi
 
     if [ ${#missing[@]} -gt 0 ]; then
-        echo -e "${RED}错误${NC}: 轻量 Spec scaffold 缺失: ${missing[*]}"
+        echo -e "${RED}错误${NC}: Spec scaffold 缺失: ${missing[*]}"
         exit 1
     fi
 
     if [ ${#missing_dirs[@]} -gt 0 ]; then
-        echo -e "${RED}错误${NC}: 轻量 Spec scaffold 缺失目录: ${missing_dirs[*]}"
+        echo -e "${RED}错误${NC}: Spec scaffold 缺失目录: ${missing_dirs[*]}"
         exit 1
     fi
 
@@ -205,7 +205,7 @@ validate_lightweight_scaffold() {
         exit 1
     fi
 
-    success "轻量 Spec scaffold 验证通过: ${required_files[*]}"
+    success "Spec scaffold 验证通过: ${required_files[*]}"
 
     local legacy_files=(
         "docs/astack/INDEX.md"
@@ -353,15 +353,15 @@ ensure_agents_md_symlink
 
 echo ""
 
-# ── 3. 从模板渲染轻量治理文档（仅缺失时） ──
+# ── 3. 从模板渲染治理文档（仅缺失时） ──
 
 [ "$HAS_INDEX_MD" = false ]       && action "创建 $HARNESS_INDEX_PATH"       && render_template "INDEX.md.tpl"       "$HARNESS_INDEX_PATH"       || true
 
 echo ""
 
-# ── 4. 验证轻量 scaffold ──
+# ── 4. 验证 scaffold ──
 
-validate_lightweight_scaffold
+validate_spec_scaffold
 
 echo ""
 

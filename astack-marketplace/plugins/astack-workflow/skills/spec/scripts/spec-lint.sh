@@ -1,5 +1,5 @@
 #!/bin/bash
-# spec-lint.sh — lightweight SPEC document checks
+# spec-lint.sh — SPEC document checks
 #
 # Usage (run from the repository root):
 #   spec-lint.sh [file-or-directory]
@@ -97,7 +97,7 @@ for FILE in "${FILES[@]}"; do
     echo "--- $FILENAME ---"
 
     if [[ ! "$FILENAME" =~ ^Iteration[0-9]+_[A-Za-z][A-Za-z0-9]*_SPEC\.md$ ]]; then
-        error "$FILENAME: filename does not match the lightweight SPEC convention" \
+        error "$FILENAME: filename does not match the SPEC convention" \
               "Use Iteration<N>_<PascalSlug>_SPEC.md, for example Iteration12_AstackMarketplace_SPEC.md"
     else
         ok "filename"
@@ -153,7 +153,7 @@ for FILE in "${FILES[@]}"; do
     if has_pattern '验证计划|Verification plan|验证命令' "$FILE"; then
         ok "verification plan"
     else
-        warn "$FILENAME: no lightweight verification plan found"
+        warn "$FILENAME: no verification plan found"
     fi
 
     if has_pattern '验证记录|Verification record|校验结果|test.*pass|typecheck.*pass' "$FILE"; then

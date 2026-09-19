@@ -1,6 +1,6 @@
 # astack-marketplace
 
-> Claude Code and Codex plugin marketplace for the Astack lightweight Spec workflow and shared engineering skills.
+> Claude Code and Codex plugin marketplace for the Astack Spec workflow and shared engineering skills.
 
 ## 1. Repository Role
 
@@ -13,7 +13,7 @@ This directory is a dual Claude Code / Codex marketplace root. It follows both m
 
 The marketplace ships two plugins:
 
-- `astack-workflow` owns the lightweight Spec workflow.
+- `astack-workflow` owns the Spec workflow.
 - `astack-common` owns reusable engineering skills that are not workflow phases.
 
 ## 2. Protocol Layout

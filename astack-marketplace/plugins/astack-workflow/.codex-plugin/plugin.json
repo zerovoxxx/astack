@@ -1,7 +1,7 @@
 {
   "name": "astack-workflow",
   "version": "0.1.0",
-  "description": "Lightweight Spec-driven workflow for Codex and Claude Code projects.",
+  "description": "Spec-driven workflow for Codex and Claude Code projects.",
   "author": {
     "name": "zerovoxxx"
   },
@@ -17,8 +17,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Astack Workflow",
-    "shortDescription": "Lightweight Spec workflow with fresh verification evidence.",
-    "longDescription": "Initialize project governance, write lightweight specs, plan complex work, implement changes, and ship with recorded verification evidence.",
+    "shortDescription": "Spec workflow with fresh verification evidence.",
+    "longDescription": "Initialize project governance, write specs, plan complex work, implement changes, and ship with recorded verification evidence.",
     "developerName": "zerovoxxx",
     "category": "Productivity",
     "capabilities": [
@@ -26,7 +26,7 @@
       "Write"
     ],
     "defaultPrompt": [
-      "Use Astack Workflow to initialize a lightweight Spec workflow.",
+      "Use Astack Workflow to initialize a Spec workflow.",
       "Use Astack Workflow to create a SPEC and implement it with verification evidence."
     ],
     "brandColor": "#10A37F"
