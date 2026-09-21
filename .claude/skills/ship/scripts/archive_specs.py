@@ -289,7 +289,7 @@ def _apply(
                 != 1
             ):
                 raise ArchiveError(f"归档 INDEX 条目数量异常：{candidate.filename}")
-    except Exception as error:
+    except (ArchiveError, OSError, subprocess.CalledProcessError) as error:
         rollback_errors: list[str] = []
         for path, existed, content in (
             (index_path, True, main_original),
@@ -297,7 +297,7 @@ def _apply(
         ):
             try:
                 _restore_file(path, existed, content)
-            except Exception as rollback_error:
+            except OSError as rollback_error:
                 rollback_errors.append(f"恢复 {path} 失败：{rollback_error}")
         for source, destination, tracked in reversed(moved):
             if not destination.exists():
@@ -318,7 +318,7 @@ def _apply(
                         )
                 else:
                     shutil.move(destination, source)
-            except Exception as rollback_error:
+            except OSError as rollback_error:
                 rollback_errors.append(
                     f"恢复 {destination.name} 失败：{rollback_error}"
                 )
@@ -329,7 +329,7 @@ def _apply(
                 and not any(archive_dir.iterdir())
             ):
                 archive_dir.rmdir()
-        except Exception as rollback_error:
+        except OSError as rollback_error:
             rollback_errors.append(f"清理 {archive_dir} 失败：{rollback_error}")
         if rollback_errors:
             raise ArchiveError(
